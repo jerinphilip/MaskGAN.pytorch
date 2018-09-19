@@ -33,23 +33,31 @@ class IMDbDataset(Dataset):
         return contents
 
 class TensorIMDbDataset(IMDbDataset):
-    def __init__(self, path, tokenize):
+    def __init__(self, path, tokenize, truncate=40):
         super().__init__(path)
         self.tokenize = tokenize
+        self.truncate = truncate
         self.build_vocab()
 
     def build_vocab(self):
         self.vocab = Vocab()
-        for i in tqdm(range(self.length)):
+        for i in tqdm(range(self.length), desc='build-vocab'):
             contents = super().__getitem__(i)
             tokens = self.tokenize(contents)
+            tokens = self._truncate(tokens)
             for token in tokens:
                 self.vocab.add(token)
+
+    def _truncate(self, tokens):
+        truncate = max(len(tokens), self.truncate)
+        tokens = tokens[:truncate]
+        return tokens
 
 
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
         tokens = self.tokenize(contents)
+        tokens = self._truncate(tokens)
         idxs = []
         for token in tokens:
             idxs.append(self.vocab[token])
