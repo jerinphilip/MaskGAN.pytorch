@@ -10,9 +10,10 @@ class Vocab:
         self.add('<unk>')
 
     def add(self, key):
-        self.counter += 1
-        self.w2i[key] = self.counter
-        self.i2w[self.counter] = key
+        if key not in self.w2i:
+            self.counter += 1
+            self.w2i[key] = self.counter
+            self.i2w[self.counter] = key
 
     def __getitem__(self, key):
         if key not in self.w2i:

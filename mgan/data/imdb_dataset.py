@@ -2,6 +2,7 @@ import os
 import torch
 from torch.utils.data import Dataset
 from mgan.utils import Vocab
+from tqdm import tqdm
 
 class IMDbDataset(Dataset):
     def __init__(self, path):
@@ -39,14 +40,15 @@ class TensorIMDbDataset(IMDbDataset):
 
     def build_vocab(self):
         self.vocab = Vocab()
-        for i in range(self.length):
-            contents = self.__getitem__(i)
+        for i in tqdm(range(self.length)):
+            contents = super().__getitem__(i)
             tokens = self.tokenize(contents)
-            self.vocab.add(tokenize)
+            for token in tokens:
+                self.vocab.add(token)
 
 
     def __getitem__(self, idx):
-        contents = super.__getitem__(idx)
+        contents = super().__getitem__(idx)
         tokens = self.tokenize(contents)
         idxs = []
         for token in tokens:

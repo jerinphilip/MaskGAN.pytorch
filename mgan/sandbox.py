@@ -1,8 +1,9 @@
-from mgan.data import IMDbDataset
+from mgan.data import IMDbDataset, TensorIMDbDataset
 from argparse import ArgumentParser
 
 def dataset_test(args):
-    dataset = IMDbDataset(args.path)
+    tokenize = lambda x: x.split()
+    dataset = TensorIMDbDataset(args.path, tokenize)
     n = len(dataset)
     for i in range(n):
         print(dataset.__getitem__(i))
