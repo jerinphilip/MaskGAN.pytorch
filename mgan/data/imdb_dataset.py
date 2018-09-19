@@ -1,5 +1,7 @@
 import os
+import torch
 from torch.utils.data import Dataset
+from mgan.utils import Vocab
 
 class IMDbDataset(Dataset):
     def __init__(self, path):
@@ -28,3 +30,30 @@ class IMDbDataset(Dataset):
         for ignore in ignores:
             contents = contents.replace(ignore, '')
         return contents
+
+class TensorIMDbDataset(IMDbDataset):
+    def __init__(self, path, tokenize):
+        super().__init__(path)
+        self.tokenize = tokenize
+        self.build_vocab()
+
+    def build_vocab(self):
+        self.vocab = Vocab()
+        for i in range(self.length):
+            contents = self.__getitem__(i)
+            tokens = self.tokenize(contents)
+            self.vocab.add(tokenize)
+
+
+    def __getitem__(self, idx):
+        contents = super.__getitem__(idx)
+        tokens = self.tokenize(contents)
+        idxs = []
+        for token in tokens:
+            idxs.append(self.vocab[token])
+        return torch.LongTensor(idxs)
+
+    @staticmethod
+    def collate(self, samples):
+        # TODO: Implement Collate
+        pass
