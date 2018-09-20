@@ -52,6 +52,8 @@ class TensorIMDbDataset(IMDbDataset):
     def _truncate(self, tokens):
         truncate = max(len(tokens), self.truncate)
         tokens = tokens[:truncate]
+        while len(tokens) < self.truncate:
+            tokens.append(self.vocab.special.pad)
         return tokens
 
 

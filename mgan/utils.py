@@ -1,3 +1,4 @@
+from collections import namedtuple
 
 class Vocab:
     def __init__(self):
@@ -5,9 +6,15 @@ class Vocab:
         self.i2w = {}
         self.counter = 0
         self.frozen = False
-        self.add('<s>')
-        self.add('</s>')
-        self.add('<unk>')
+
+        self.set_specials()
+
+
+    def set_specials(self):
+        Special = namedtuple('Special', 'pad bos eos unk')
+        self.special = Special(pad='<pad>', bos='<s>', eos='</s>', unk='<unk>')
+        for key, value in self.special._asdict().items():
+            self.add(value)
 
     def add(self, key):
         assert(not self.frozen)
