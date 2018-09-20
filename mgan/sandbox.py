@@ -1,12 +1,23 @@
 from mgan.data import IMDbDataset, TensorIMDbDataset
 from argparse import ArgumentParser
+from mgan.modules import Preprocess
 
 def dataset_test(args):
-    tokenize = lambda x: x.split()
-    dataset = TensorIMDbDataset(args.path, tokenize)
+    mask = {
+        "type": "end",
+        "kwargs": {"n_chars": 3}
+    }
+
+    tokenize = {
+        "type": "space",
+    }
+
+    preprocess = Preprocess(mask, tokenize)
+    dataset = TensorIMDbDataset(args.path, preprocess)
+    print(len(dataset.vocab))
     n = len(dataset)
-    for i in range(n):
-        print(dataset.__getitem__(i))
+    # for i in range(n):
+    #     print(dataset.__getitem__(i))
 
 
 if __name__ == '__main__':

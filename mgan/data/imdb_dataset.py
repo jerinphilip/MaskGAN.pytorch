@@ -33,9 +33,9 @@ class IMDbDataset(Dataset):
         return contents
 
 class TensorIMDbDataset(IMDbDataset):
-    def __init__(self, path, tokenize, truncate=40):
+    def __init__(self, path, preprocess, truncate=40):
         super().__init__(path)
-        self.tokenize = tokenize
+        self.preprocess = preprocess
         self.truncate = truncate
         self.build_vocab()
 
@@ -43,10 +43,11 @@ class TensorIMDbDataset(IMDbDataset):
         self.vocab = Vocab()
         for i in tqdm(range(self.length), desc='build-vocab'):
             contents = super().__getitem__(i)
-            tokens = self.tokenize(contents)
+            tokens = self.preprocess(contents, mask=False)
             tokens = self._truncate(tokens)
             for token in tokens:
                 self.vocab.add(token)
+        self.vocab.add(self.preprocess.mask.mask_token)
 
     def _truncate(self, tokens):
         truncate = max(len(tokens), self.truncate)
@@ -56,7 +57,7 @@ class TensorIMDbDataset(IMDbDataset):
 
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
-        tokens = self.tokenize(contents)
+        tokens = self.preprocess(contents)
         tokens = self._truncate(tokens)
         idxs = []
         for token in tokens:
@@ -67,3 +68,4 @@ class TensorIMDbDataset(IMDbDataset):
     def collate(self, samples):
         # TODO: Implement Collate
         pass
+
