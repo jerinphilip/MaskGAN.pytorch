@@ -16,8 +16,6 @@ def dataset_test(args):
     dataset = TensorIMDbDataset(args.path, preprocess)
     print(len(dataset.vocab))
     n = len(dataset)
-    # for i in range(n):
-    #     print(dataset.__getitem__(i))
 
 
 if __name__ == '__main__':

@@ -59,7 +59,12 @@ class TensorIMDbDataset(IMDbDataset):
 
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
-        tokens = self.preprocess(contents)
+        tgt = self.Tensor_idxs(contents, masked=False)
+        src = self.Tensor_idxs(contents, masked=True)
+        return (src, tgt)
+    
+    def Tensor_idxs(self, contents, masked=True):
+        tokens = self.preprocess(contents, masked=masked)
         tokens = self._truncate(tokens)
         idxs = []
         for token in tokens:

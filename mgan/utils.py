@@ -13,15 +13,20 @@ class Vocab:
     def set_specials(self):
         Special = namedtuple('Special', 'pad bos eos unk')
         self.special = Special(pad='<pad>', bos='<s>', eos='</s>', unk='<unk>')
+        vals = {}
         for key, value in self.special._asdict().items():
-            self.add(value)
+            val = self.add(value)
+            vals[key] = val
+
+        self.special_idxs = Special(**vals)
 
     def add(self, key):
         assert(not self.frozen)
         if key not in self.w2i:
-            self.counter += 1
             self.w2i[key] = self.counter
             self.i2w[self.counter] = key
+            self.counter += 1
+        return self.w2i[key]
 
     def freeze(self):
         self.frozen = True
