@@ -15,10 +15,24 @@ class Seq2Seq(nn.Module):
 
     def forward(self, x, lx, 
             z = None, lz = None):
+
+        self.report_hook({
+            "inputs": x.detach().cpu(),
+            "seq_lens": lx,
+        })
+
         e_out, e_hidden = self.encoder(x, lx)
         if z is not None:
+            self.report_hook({
+                "truths": z.detach().cpu(),
+                "seq_lens": z.detach().cpu()
+            })
             return self._teacher_forced_decoder_forward(e_hidden, e_out, z, lz) 
         else:
+            self.report_hook({
+                "truths": None,
+                "seq_lens": None
+            })
             return self._naive_decoder_unroll(e_hidden, e_out)
     
     def _teacher_forced_decoder_forward(self, 
@@ -26,20 +40,19 @@ class Seq2Seq(nn.Module):
         d_ctx = d_hidden
         d_outs = []
         T, B = z.size()
-        for t in range(T):
+        for t in range(T-1):
             seed = z[t, :]
             d_out, d_hidden, d_ctx, attns = self.decoder(
                     seed, d_hidden, d_ctx, e_out
             )
             
-            self.report_hook({
-                "t": t,
-                "out": d_out.detach(), 
-                "hidden": d_hidden.detach(),
-                "attns": attns.detach()
-            })
             
             d_outs.append(d_out)
+            self.report_hook({
+                "t": t,
+                "preds": seed.detach().cpu(), 
+                "attns": attns.detach()
+            }, step=True)
 
             
         # Output is a TxBxH
@@ -62,18 +75,25 @@ class Seq2Seq(nn.Module):
                     seed, d_hidden, d_ctx, e_out
             )
 
-            self.report_hook({
-                "t": t,
-                "out": d_out.detach(), 
-                "hidden": d_hidden.detach(),
-                "attns": attns.detach()
-            })
 
             d_outs.append(d_out)
             mv, mi = d_out.max(dim=2)
             seed = mi.view(-1)
+            self.report_hook({
+                "t": t,
+                "preds": seed.detach().cpu(),
+                "attns": attns.detach()
+            }, step=True)
 
         return torch.cat(d_outs, 0)
 
+    def save(self, fpath):
+        with open(fpath, 'wb+') as fp:
+            torch.save(self.state_dict(), fp)
 
+
+    def load(self, fpath):
+        with open(fpath, 'rb') as fp:
+            state = torch.load(fp)
+            self.load_state_dict(state)
 

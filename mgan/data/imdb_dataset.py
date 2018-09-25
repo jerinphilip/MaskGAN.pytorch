@@ -1,6 +1,7 @@
 import os
 import torch
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
 from mgan.utils import Vocab
 from tqdm import tqdm
 
@@ -39,7 +40,15 @@ class TensorIMDbDataset(IMDbDataset):
         self.truncate = truncate
         self.build_vocab()
 
-    def build_vocab(self):
+    def build_vocab(self, rebuild=False):
+        vocab_path = os.path.join(self.path, 'vocab.pt')
+        if os.path.exists(vocab_path) and not rebuild:
+            self.vocab = Vocab.load(vocab_path)
+        else:
+            self.rebuild_vocab()
+    
+    def rebuild_vocab(self):
+        vocab_path = os.path.join(self.path, 'vocab.pt')
         self.vocab = Vocab()
         for i in tqdm(range(self.length), desc='build-vocab'):
             contents = super().__getitem__(i)
@@ -48,31 +57,36 @@ class TensorIMDbDataset(IMDbDataset):
             for token in tokens:
                 self.vocab.add(token)
         self.vocab.add(self.preprocess.mask.mask_token)
+        self.vocab.save(vocab_path)
 
     def _truncate(self, tokens):
-        truncate = max(len(tokens), self.truncate)
+        truncate = min(len(tokens), self.truncate)
         tokens = tokens[:truncate]
+        token_count = len(tokens)
         while len(tokens) < self.truncate:
             tokens.append(self.vocab.special.pad)
-        return tokens
+        return (tokens, token_count)
 
 
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
-        tgt = self.Tensor_idxs(contents, masked=False)
-        src = self.Tensor_idxs(contents, masked=True)
-        return (src, tgt)
+        tgt, tgt_length = self.Tensor_idxs(contents, masked=False)
+        src, src_length  = self.Tensor_idxs(contents, masked=True)
+        return (src, src_length, tgt, tgt_length)
     
     def Tensor_idxs(self, contents, masked=True):
-        tokens = self.preprocess(contents, masked=masked)
-        tokens = self._truncate(tokens)
+        tokens = self.preprocess(contents, mask=masked)
+        tokens, token_count = self._truncate(tokens)
         idxs = []
         for token in tokens:
             idxs.append(self.vocab[token])
-        return torch.LongTensor(idxs)
+        return (torch.LongTensor(idxs), token_count)
 
     @staticmethod
-    def collate(self, samples):
+    def collate(samples):
         # TODO: Implement Collate
-        pass
+        srcs, src_lengths, tgts, tgt_lengths = list(zip(*samples))
+        srcs = pad_sequence(srcs)
+        tgts = pad_sequence(tgts)
+        return (srcs, src_lengths, tgts, tgt_lengths)
 

@@ -1,4 +1,5 @@
 from collections import namedtuple
+import torch
 
 class Vocab:
     def __init__(self):
@@ -38,5 +39,29 @@ class Vocab:
         if key not in self.w2i:
             return self.w2i['<unk>']
         return self.w2i[key]
+
+    def export(self):
+        payload = {
+            "w2i": self.w2i,
+            "i2w": self.i2w,
+            "counter": self.counter
+        }
+        return payload
+
+    def save(self, fpath):
+        with open(fpath, 'wb+') as fp:
+            torch.save(self.export(), fp)
+
+    @classmethod
+    def load(cls, fpath):
+        with open(fpath, 'rb') as fp:
+            payload = torch.load(fp)
+            vocab = cls()
+            vocab.w2i = payload["w2i"]
+            vocab.i2w = payload["i2w"]
+            vocab.counter = payload["counter"]
+            return vocab
+
+
 
 
