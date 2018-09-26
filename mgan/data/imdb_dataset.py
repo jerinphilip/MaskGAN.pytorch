@@ -2,7 +2,7 @@ import os
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-from mgan.utils import Vocab
+from fairseq.data.dictionary import Dictionary
 from tqdm import tqdm
 
 class IMDbDataset(Dataset):
@@ -43,20 +43,21 @@ class TensorIMDbDataset(IMDbDataset):
     def build_vocab(self, rebuild=False):
         vocab_path = os.path.join(self.path, 'vocab.pt')
         if os.path.exists(vocab_path) and not rebuild:
-            self.vocab = Vocab.load(vocab_path)
+            self.vocab = Dictionary.load(vocab_path)
         else:
             self.rebuild_vocab()
     
     def rebuild_vocab(self):
         vocab_path = os.path.join(self.path, 'vocab.pt')
-        self.vocab = Vocab()
+        self.vocab = Dictionary()
+        self.vocab.add_symbol(self.preprocess.mask.mask_token)
         for i in tqdm(range(self.length), desc='build-vocab'):
             contents = super().__getitem__(i)
             tokens = self.preprocess(contents, mask=False)
-            tokens = self._truncate(tokens)
+            tokens, token_count = self._truncate(tokens)
             for token in tokens:
-                self.vocab.add(token)
-        self.vocab.add(self.preprocess.mask.mask_token)
+                self.vocab.add_symbol(token)
+
         self.vocab.save(vocab_path)
 
     def _truncate(self, tokens):
@@ -64,7 +65,7 @@ class TensorIMDbDataset(IMDbDataset):
         tokens = tokens[:truncate]
         token_count = len(tokens)
         while len(tokens) < self.truncate:
-            tokens.append(self.vocab.special.pad)
+            tokens.append(self.vocab.pad())
         return (tokens, token_count)
 
 
@@ -79,7 +80,7 @@ class TensorIMDbDataset(IMDbDataset):
         tokens, token_count = self._truncate(tokens)
         idxs = []
         for token in tokens:
-            idxs.append(self.vocab[token])
+            idxs.append(self.vocab.index(token))
         return (torch.LongTensor(idxs), token_count)
 
     @staticmethod
