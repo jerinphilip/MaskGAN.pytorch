@@ -87,7 +87,23 @@ class TensorIMDbDataset(IMDbDataset):
     def collate(samples):
         # TODO: Implement Collate
         srcs, src_lengths, tgts, tgt_lengths = list(zip(*samples))
+
+        src_lengths = torch.LongTensor(src_lengths)
+        tgt_lengths = torch.LongTensor(tgt_lengths)
+
+        src_lengths, sort_order = src_lengths.sort(descending=True)
+
         srcs = pad_sequence(srcs)
         tgts = pad_sequence(tgts)
+
+        srcs = srcs.index_select(1, sort_order)
+        tgts = tgts.index_select(1, sort_order)
+
+        batch_first = True
+
+        if batch_first:
+            srcs = srcs.permute(1, 0).contiguous()
+            tgts = tgts.permute(1, 0).contiguous()
+
         return (srcs, src_lengths, tgts, tgt_lengths)
 
