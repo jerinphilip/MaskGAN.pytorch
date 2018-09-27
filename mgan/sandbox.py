@@ -41,7 +41,7 @@ def dataset_test(args):
     def checkpoint(model, opt, checkpoint_path):
         _payload = {
             "model": model.state_dict(),
-            "opt": model.state_dict()
+            "opt": opt.state_dict()
         }
 
         with open(checkpoint_path, "wb+") as fp:
@@ -50,13 +50,13 @@ def dataset_test(args):
     def load(model, opt, checkpoint_path):
         _payload = torch.load(checkpoint_path)
         model.load_state_dict(_payload["model"])
-        # opt.load_state_dict(_payload["opt"])
+        opt.load_state_dict(_payload["opt"])
 
 
     args = Args()
     model = MaskedMLE.build_model(args, task)
-    model = model.to(device)
     opt = optim.Adam(model.parameters())
+    model = model.to(device)
     reduce = True
     max_epochs = 100
 
