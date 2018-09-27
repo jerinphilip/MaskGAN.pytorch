@@ -7,6 +7,7 @@ class Preprocess(nn.Module):
 
     MASK_REGISTRY = {
         "end": mask.EndMask,
+        "random": mask.StochasticMask
     }
 
     TOKENIZE_REGISTRY = {
