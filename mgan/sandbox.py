@@ -6,6 +6,9 @@ from mgan.models import MaskedMLE
 from collections import namedtuple
 from torch.nn import functional as F
 from torch import optim
+from fairseq.meters import AverageMeter
+from fairseq.progress_bar import tqdm_progress_bar
+from tqdm import tqdm
 
 
 class Args: 
@@ -23,26 +26,37 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess)
-    loader = DataLoader(dataset, batch_size=12, collate_fn=TensorIMDbDataset.collate)
+    loader = DataLoader(dataset, batch_size=25, collate_fn=TensorIMDbDataset.collate)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
+    meters = {}
+    meters['loss'] = AverageMeter()
+
+    device = 'cuda'
+
     args = Args()
     model = MaskedMLE.build_model(args, task)
+    model = model.to(device)
     opt = optim.Adam(model.parameters())
-    for src, src_lens, tgt, tgt_lens in loader:
-        #print(src.size(), src_lens, tgt.size(), tgt_lens)
-        opt.zero_grad()
-        reduce = True
-        net_output = model(src, src_lens, tgt)
-        lprobs = model.get_normalized_probs(net_output, log_probs=True)
-        lprobs = lprobs.view(-1, lprobs.size(-1))
-        target = tgt.view(-1)
-        loss = F.nll_loss(lprobs, target, size_average=False, ignore_index=dataset.vocab.pad(),
-                          reduce=reduce)
-        loss.backward()
-        print(loss.item())
-        opt.step()
+    reduce = True
+    max_epochs = 100
+    for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
+        pbar = tqdm_progress_bar(loader, epoch=epoch)
+        for src, src_lens, tgt, tgt_lens in pbar:
+            #print(src.size(), src_lens, tgt.size(), tgt_lens)
+            opt.zero_grad()
+            src, tgt = src.to(device), tgt.to(device)
+            net_output = model(src, src_lens, tgt)
+            lprobs = model.get_normalized_probs(net_output, log_probs=True)
+            lprobs = lprobs.view(-1, lprobs.size(-1))
+            target = tgt.view(-1)
+            loss = F.nll_loss(lprobs, target, size_average=False, ignore_index=dataset.vocab.pad(),
+                              reduce=reduce)
+            loss.backward()
+            meters['loss'].update(loss.item())
+            pbar.log(meters)
+            opt.step()
 
 if __name__ == '__main__':
     parser = ArgumentParser()
