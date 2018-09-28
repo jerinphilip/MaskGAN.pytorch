@@ -8,9 +8,23 @@ from torch.nn import functional as F
 from torch import optim
 from fairseq.meters import AverageMeter
 from fairseq.progress_bar import tqdm_progress_bar
+from fairseq.sequence_generator import SequenceGenerator
 from tqdm import tqdm
 import torch
 import os
+
+class Trainer:
+    def __init__(self, model, criterion, opt):
+        self.model = model
+        self.criterion = criterion
+        self.opt = opt
+
+
+    def run(self, batch):
+        pass
+
+    def evaluate(self, batch):
+        pass
 
 
 class Args: 
@@ -19,7 +33,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.3}
+        "kwargs": {"probability": 0.8}
     }
 
     tokenize = {
@@ -27,8 +41,8 @@ def dataset_test(args):
     }
 
     preprocess = Preprocess(mask, tokenize)
-    dataset = TensorIMDbDataset(args.path, preprocess)
-    loader = DataLoader(dataset, batch_size=25, collate_fn=TensorIMDbDataset.collate)
+    dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
+    loader = DataLoader(dataset, batch_size=60, collate_fn=TensorIMDbDataset.collate)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -58,7 +72,7 @@ def dataset_test(args):
     opt = optim.Adam(model.parameters())
     model = model.to(device)
     reduce = True
-    max_epochs = 100
+    max_epochs = 0
 
     checkpoint_path = "best_checkpoint.pt"
     if os.path.exists(checkpoint_path):
@@ -67,8 +81,9 @@ def dataset_test(args):
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()
+        count = 0
         for src, src_lens, tgt, tgt_lens in pbar:
-            #print(src.size(), src_lens, tgt.size(), tgt_lens)
+            count += 1
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
             net_output = model(src, src_lens, tgt)
@@ -82,9 +97,24 @@ def dataset_test(args):
             pbar.log(meters)
             opt.step()
 
+            if count > 1:
+                break
+
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
         checkpoint(model, opt, checkpoint_path)
+
+    seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
+    for src, src_lens, tgt, tgt_lens in loader:
+        src = src.to(device)
+        encoder_input = {"src_tokens": src, "src_lengths": src_lens}
+        samples = seq_gen.generate(encoder_input, maxlen=20)
+        for sample in samples:
+           string = dataset.vocab.string(sample['tokens'])
+           print(string)
+        break
+
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()

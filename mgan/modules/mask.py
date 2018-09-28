@@ -28,11 +28,14 @@ class StochasticMask(Mask):
 
     def forward(self, xs):
         ys = []
+        mask_count = 0
         for i, x in enumerate(xs):
             if random() < self.p:
+                mask_count += 1
                 ys.append(self.mask_token)
             else:
                 ys.append(x)
+        # print("Rate:", mask_count/len(ys))
         return ys
 
 

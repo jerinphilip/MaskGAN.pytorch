@@ -75,12 +75,21 @@ class TensorIMDbDataset(IMDbDataset):
         src, src_length  = self.Tensor_idxs(contents, masked=True)
         return (src, src_length, tgt, tgt_length)
     
-    def Tensor_idxs(self, contents, masked=True):
+    def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=True):
         tokens = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
         idxs = []
+
+        if move_eos_to_beginning:
+            idxs.append(self.vocab.eos())
+            token_count += 1
+
         for token in tokens:
             idxs.append(self.vocab.index(token))
+
+        idxs.append(self.vocab.eos())
+        token_count += 1
+
         return (torch.LongTensor(idxs), token_count)
 
     @staticmethod

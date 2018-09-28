@@ -1,3 +1,4 @@
+
 from fairseq.models.lstm \
         import LSTMEncoder, \
                LSTMDecoder, \
@@ -6,8 +7,8 @@ from fairseq.models.lstm \
 from fairseq.models.fairseq_model \
         import FairseqModel
 
+from warnings import warn
 
-class MGANEncoder(LSTMEncoder): pass
-class MGANDecoder(LSTMDecoder): pass
+class MLEEncoder(LSTMEncoder): pass
+class MLEDecoder(LSTMDecoder): pass
 class MaskedMLE(LSTMModel): pass
-
