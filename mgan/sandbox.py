@@ -33,7 +33,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.8}
+        "kwargs": {"probability": 0.3}
     }
 
     tokenize = {
@@ -42,7 +42,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=60, collate_fn=TensorIMDbDataset.collate)
+    loader = DataLoader(dataset, batch_size=30, collate_fn=TensorIMDbDataset.collate)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -72,7 +72,7 @@ def dataset_test(args):
     opt = optim.Adam(model.parameters())
     model = model.to(device)
     reduce = True
-    max_epochs = 0
+    max_epochs = 10
 
     checkpoint_path = "best_checkpoint.pt"
     if os.path.exists(checkpoint_path):
@@ -88,8 +88,12 @@ def dataset_test(args):
             src, tgt = src.to(device), tgt.to(device)
             net_output = model(src, src_lens, tgt)
             lprobs = model.get_normalized_probs(net_output, log_probs=True)
+            # B x T x H sequence
+
+            lprobs = lprobs[:, :-1, :].contiguous()
             lprobs = lprobs.view(-1, lprobs.size(-1))
-            target = tgt.view(-1)
+            # B x T sequence
+            target = tgt[:, 1:].contiguous().view(-1)
             loss = F.nll_loss(lprobs, target, size_average=False, ignore_index=dataset.vocab.pad(),
                               reduce=reduce)
             loss.backward()
@@ -97,8 +101,6 @@ def dataset_test(args):
             pbar.log(meters)
             opt.step()
 
-            if count > 1:
-                break
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
@@ -110,7 +112,7 @@ def dataset_test(args):
         encoder_input = {"src_tokens": src, "src_lengths": src_lens}
         samples = seq_gen.generate(encoder_input, maxlen=20)
         for sample in samples:
-           string = dataset.vocab.string(sample['tokens'])
+           string = dataset.vocab.string(sample[0]['tokens'])
            print(string)
         break
 
