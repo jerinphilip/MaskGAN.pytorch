@@ -1,5 +1,5 @@
 from torch import nn
-from random import uniform, random
+import random
 
 
 class Mask:
@@ -25,17 +25,17 @@ class EndMask(Mask):
 class StochasticMask(Mask):
     def __init__(self, probability):
         self.p = probability
+        self.r = random.Random(42)
 
     def forward(self, xs):
         ys = []
         mask_count = 0
         for i, x in enumerate(xs):
-            if random() < self.p:
+            if self.r.random() < self.p:
                 mask_count += 1
                 ys.append(self.mask_token)
             else:
                 ys.append(x)
-        # print("Rate:", mask_count/len(ys))
         return ys
 
 

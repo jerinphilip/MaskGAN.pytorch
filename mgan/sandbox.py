@@ -12,19 +12,9 @@ from fairseq.sequence_generator import SequenceGenerator
 from tqdm import tqdm
 import torch
 import os
-
-class Trainer:
-    def __init__(self, model, criterion, opt):
-        self.model = model
-        self.criterion = criterion
-        self.opt = opt
-
-
-    def run(self, batch):
-        pass
-
-    def evaluate(self, batch):
-        pass
+from torch.nn import DataParallel
+from torch import nn
+from mgan.modules.generator import Generator
 
 
 class Args: 
@@ -33,7 +23,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.3}
+        "kwargs": {"probability": 0.1}
     }
 
     tokenize = {
@@ -42,7 +32,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=30, collate_fn=TensorIMDbDataset.collate)
+    loader = DataLoader(dataset, batch_size=60, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -54,7 +44,7 @@ def dataset_test(args):
 
     def checkpoint(model, opt, checkpoint_path):
         _payload = {
-            "model": model.state_dict(),
+            "model": model.module.state_dict(),
             "opt": opt.state_dict()
         }
 
@@ -70,13 +60,19 @@ def dataset_test(args):
     args = Args()
     model = MaskedMLE.build_model(args, task)
     opt = optim.Adam(model.parameters())
-    model = model.to(device)
     reduce = True
-    max_epochs = 10
+    max_epochs = 20 
 
-    checkpoint_path = "best_checkpoint.pt"
+
+    model = Generator(model)
+    checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
+    model = model.to(device)
     if os.path.exists(checkpoint_path):
         load(model, opt, checkpoint_path)
+
+    model = DataParallel(model)
+    criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
+    criterion = DataParallel(criterion)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
@@ -86,18 +82,18 @@ def dataset_test(args):
             count += 1
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
-            net_output = model(src, src_lens, tgt)
-            lprobs = model.get_normalized_probs(net_output, log_probs=True)
+            # net_output = model(src, src_lens, tgt)
+            # lprobs = model.module.get_normalized_probs(net_output, log_probs=True)
+            lprobs = model(src, src_lens, tgt) 
             # B x T x H sequence
 
             lprobs = lprobs[:, :-1, :].contiguous()
             lprobs = lprobs.view(-1, lprobs.size(-1))
             # B x T sequence
             target = tgt[:, 1:].contiguous().view(-1)
-            loss = F.nll_loss(lprobs, target, size_average=False, ignore_index=dataset.vocab.pad(),
-                              reduce=reduce)
-            loss.backward()
-            meters['loss'].update(loss.item())
+            loss = criterion(lprobs, target)
+            loss.sum().backward()
+            meters['loss'].update(loss.mean().item())
             pbar.log(meters)
             opt.step()
 
@@ -106,14 +102,20 @@ def dataset_test(args):
         meters['epoch'].update(avg_loss)
         checkpoint(model, opt, checkpoint_path)
 
-    seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
+    seq_gen = SequenceGenerator([model.module.model], dataset.vocab, beam_size=5)
     for src, src_lens, tgt, tgt_lens in loader:
         src = src.to(device)
         encoder_input = {"src_tokens": src, "src_lengths": src_lens}
         samples = seq_gen.generate(encoder_input, maxlen=20)
-        for sample in samples:
-           string = dataset.vocab.string(sample[0]['tokens'])
-           print(string)
+        for i, sample in enumerate(samples):
+           # print(sample[0].keys())
+           src_str = dataset.vocab.string(src[i, :])
+           tgt_str = dataset.vocab.string(tgt[i, :])
+           pred_str = dataset.vocab.string(sample[0]['tokens'])
+           print(">", src_str)
+           print("<", pred_str)
+           print("=", tgt_str)
+           print("")
         break
 
 
