@@ -14,7 +14,7 @@ import torch
 import os
 from torch.nn import DataParallel
 from torch import nn
-from mgan.modules.generator import Generator
+from mgan.modules.generator import Generator, LossGenerator
 
 
 class Args: 
@@ -32,7 +32,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=60, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=320, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -59,20 +59,19 @@ def dataset_test(args):
 
     args = Args()
     model = MaskedMLE.build_model(args, task)
-    opt = optim.Adam(model.parameters())
     reduce = True
     max_epochs = 20 
 
 
-    model = Generator(model)
+    criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
+    model = LossGenerator(model, criterion)
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
     model = model.to(device)
-    if os.path.exists(checkpoint_path):
-        load(model, opt, checkpoint_path)
+    # if os.path.exists(checkpoint_path):
+    #     load(model, opt, checkpoint_path)
 
     model = DataParallel(model)
-    criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
-    criterion = DataParallel(criterion)
+    opt = optim.Adam(model.parameters())
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
@@ -82,16 +81,7 @@ def dataset_test(args):
             count += 1
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
-            # net_output = model(src, src_lens, tgt)
-            # lprobs = model.module.get_normalized_probs(net_output, log_probs=True)
-            lprobs = model(src, src_lens, tgt) 
-            # B x T x H sequence
-
-            lprobs = lprobs[:, :-1, :].contiguous()
-            lprobs = lprobs.view(-1, lprobs.size(-1))
-            # B x T sequence
-            target = tgt[:, 1:].contiguous().view(-1)
-            loss = criterion(lprobs, target)
+            loss = model(src, src_lens, tgt)
             loss.sum().backward()
             meters['loss'].update(loss.mean().item())
             pbar.log(meters)

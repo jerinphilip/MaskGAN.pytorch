@@ -11,9 +11,9 @@ from torch.distributions.categorical import Categorical
 from warnings import warn
 from torch import nn
 
-class MaskedGAN(nn.Module):
+class MaskGAN(nn.Module):
     """
-    MaskedGAN doesn't obey FairseqModel's rules.
+    MaskGAN doesn't obey FairseqModel's rules.
     """
     def __init__(self, generator, discriminator, critic):
         super().__init__()
@@ -30,7 +30,6 @@ class MaskedGAN(nn.Module):
 
 
 class MGANDecoder(LSTMDecoder):
-
     def sample_token(self, net_outputs):
         """
         Build's a categorical distribution over the probabilities output by the
@@ -44,7 +43,7 @@ class MGANDecoder(LSTMDecoder):
         warn("Categorical works?")
         dist = Categorical(logits)
         idx = dist.sample()
-        pdb.set_trace()
+        return idx
 
 
     def forward(self, prev_output_tokens, encoder_out_dict, incremental_state=None):
