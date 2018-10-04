@@ -23,7 +23,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.1}
+        "kwargs": {"probability": 0.4}
     }
 
     tokenize = {
@@ -32,7 +32,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=320, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=200, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -52,26 +52,26 @@ def dataset_test(args):
             torch.save(_payload, fp)
 
     def load(model, opt, checkpoint_path):
-        _payload = torch.load(checkpoint_path)
-        model.load_state_dict(_payload["model"])
+        _payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+        model.module.load_state_dict(_payload["model"])
         opt.load_state_dict(_payload["opt"])
 
 
     args = Args()
     model = MaskedMLE.build_model(args, task)
     reduce = True
-    max_epochs = 20 
+    max_epochs = 80 
 
 
     criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
     model = LossGenerator(model, criterion)
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
     model = model.to(device)
-    # if os.path.exists(checkpoint_path):
-    #     load(model, opt, checkpoint_path)
-
     model = DataParallel(model)
     opt = optim.Adam(model.parameters())
+    if os.path.exists(checkpoint_path):
+       load(model, opt, checkpoint_path)
+
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
