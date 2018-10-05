@@ -32,7 +32,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=200, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=220, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -40,7 +40,7 @@ def dataset_test(args):
     meters['epoch'] = AverageMeter()
     meters['loss'] = AverageMeter()
 
-    device = 'cuda'
+    device = torch.device('cuda')
 
     def checkpoint(model, opt, checkpoint_path):
         _payload = {
@@ -53,6 +53,7 @@ def dataset_test(args):
 
     def load(model, opt, checkpoint_path):
         _payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+        #_payload = torch.load(checkpoint_path)
         model.module.load_state_dict(_payload["model"])
         opt.load_state_dict(_payload["opt"])
 
@@ -60,17 +61,18 @@ def dataset_test(args):
     args = Args()
     model = MaskedMLE.build_model(args, task)
     reduce = True
-    max_epochs = 80 
+    max_epochs = 1
 
 
     criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
     model = LossGenerator(model, criterion)
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
-    model = model.to(device)
-    model = DataParallel(model)
+    model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
     if os.path.exists(checkpoint_path):
        load(model, opt, checkpoint_path)
+
+    model = model.to(device)
 
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):

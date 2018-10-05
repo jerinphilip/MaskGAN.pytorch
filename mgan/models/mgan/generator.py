@@ -11,32 +11,16 @@ from torch.distributions.categorical import Categorical
 from warnings import warn
 from torch import nn
 
-class MaskGAN(nn.Module):
-    """
-    MaskGAN doesn't obey FairseqModel's rules.
-    """
-    def __init__(self, generator, discriminator, critic):
-        super().__init__()
-        self.generator = generator
-        self.discriminator = discriminator
-        self.critic = critic
+class MGANGEncoder(LSTMEncoder):
+    pass
 
-    @classmethod
-    def build_model(cls, args):
-        pass
-
-    def forward(self, src_tokens, src_lengths, prev_output_tokens):
-        pass
-
-
-class MGANDecoder(LSTMDecoder):
+class MGANGDecoder(LSTMDecoder):
     def sample_token(self, net_outputs):
         """
         Build's a categorical distribution over the probabilities output by the
         network. Samples a token.
 
         """
-
         warn("Check logit dimensions checkout")
         logits = net_output[0].float()
 
@@ -80,6 +64,7 @@ class MGANDecoder(LSTMDecoder):
         outs = []
         for j in range(seqlen):
             # input feeding: concatenate context vector from previous time step
+            # TODO(jerin): Probably replace this, oops!.
             input = torch.cat((x[j, :, :], input_feed), dim=1)
 
             for i, rnn in enumerate(self.layers):
@@ -132,11 +117,6 @@ class MGANDecoder(LSTMDecoder):
             else:
                 x = self.fc_out(x)
         return x, attn_scores
-
-
-
-    
-
 
 
 class MaskedRL(LSTMModel):
