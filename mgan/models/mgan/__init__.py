@@ -12,6 +12,9 @@ from torch.distributions.categorical import Categorical
 from warnings import warn
 from torch import nn
 
+from .generator import MGANGenerator
+from .discriminator import MGANDiscriminator
+
 class MaskGAN(nn.Module):
     """
     MaskGAN doesn't obey FairseqModel's rules.
@@ -23,8 +26,11 @@ class MaskGAN(nn.Module):
         self.critic = critic
 
     @classmethod
-    def build_model(cls, args):
-        pass
+    def build_model(cls, args, task):
+        generator = MGANGenerator.build_model(args, task)
+        discriminator = MGANDiscriminator.build_model(args, task)
+        critic = None
+        return cls(generator, discriminator, critic)
 
     def forward(self, src_tokens, src_lengths, prev_output_tokens):
         logits, attns = self.generator(src_tokens, src_lengths, prev_output_tokens)

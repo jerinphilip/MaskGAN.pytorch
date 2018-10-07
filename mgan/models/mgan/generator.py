@@ -42,4 +42,6 @@ class MGANGDecoder(LSTMDecoder):
         """
     pass
 
+class MGANGenerator(LSTMModel):
+    pass
 

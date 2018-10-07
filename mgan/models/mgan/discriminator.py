@@ -4,7 +4,10 @@ from fairseq.models.lstm \
         import LSTMEncoder, \
                LSTMDecoder, \
                LSTMModel, \
-               base_architecture
+               base_architecture, \
+               Embedding
+
+from fairseq import options, utils
 
 from torch import nn
 import torch
@@ -23,11 +26,10 @@ class MGANDiscriminatorDecoder(LSTMDecoder):
         return (x, attn_scores)
 
 
-class MGANDiscriminator(nn.Module):
+class MGANDiscriminator(LSTMModel):
     @classmethod
-    def build_model(cls, task, args):
-       """Build a new model instance."""
-        # make sure that all args are properly defaulted (in case there are any new ones)
+    def build_model(cls, args, task):
+        """Build a new model instance."""
         base_architecture(args)
 
         def load_pretrained_embedding_from_file(embed_path, dictionary, embed_dim):

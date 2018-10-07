@@ -17,6 +17,9 @@ from torch import nn
 from mgan.modules.generator import Generator, LossGenerator
 
 
+from mgan.models.mgan import MaskGAN
+
+
 class Args: 
     criterion = 'dummy'
 
@@ -59,7 +62,8 @@ def dataset_test(args):
 
 
     args = Args()
-    model = MaskedMLE.build_model(args, task)
+    # model = MaskedMLE.build_model(args, task)
+    model = MaskGAN.build_model(args, task)
     reduce = True
     max_epochs = 1
 
@@ -69,10 +73,10 @@ def dataset_test(args):
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
     model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
+    model = model.to(device)
     if os.path.exists(checkpoint_path):
        load(model, opt, checkpoint_path)
 
-    model = model.to(device)
 
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
