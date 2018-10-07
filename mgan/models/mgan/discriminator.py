@@ -18,12 +18,13 @@ class MGANDiscriminatorEncoder(LSTMEncoder):
 class MGANDiscriminatorDecoder(LSTMDecoder):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.additional_fc = nn.Linear(self.hidden_size, 1)
+        out_embed_dim = self.additional_fc.out_features if hasattr(self, "additional_fc") else self.hidden_size
+        self.fc_out = nn.Linear(out_embed_dim, 1)
 
     def forward(self, prev_output_tokens, encoder_out_dict, incremental_state=None):
         x, attn_scores = super().forward(prev_output_tokens, encoder_out_dict, incremental_state)
         x = torch.sigmoid(x)
-        return (x, attn_scores)
+        return x, attn_scores
 
 
 class MGANDiscriminator(LSTMModel):
@@ -111,4 +112,7 @@ class MGANDiscriminator(LSTMModel):
             ),
         )
         return cls(encoder, decoder)
+
+    def forward(self, *args, **kwargs):
+        return super().forward(*args, **kwargs)
 

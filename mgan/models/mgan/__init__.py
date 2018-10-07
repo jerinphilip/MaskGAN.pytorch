@@ -38,7 +38,7 @@ class MaskGAN(nn.Module):
 
 
         bsz, seqlen, vocab_size = logits.size()
-        print("Logits size:", logits.size())
+        # print("Logits size:", logits.size())
 
         # Sample from x converting it to probabilities
         samples = []
@@ -57,10 +57,14 @@ class MaskGAN(nn.Module):
 
         # Once all are sampled, it's possible to find the rewards from the generator.
         samples = torch.cat(samples, dim=1)
-        print("Samples:", samples.size())
-        probs = self.discriminator(samples, src_lengths, prev_output_tokens)
+        # I may need to strip off an extra token generated.
+        samples = samples[:, :-1]
+        warn("Samples may not be the correct size. May need fixing")
+        # print("Samples:", samples.size(), "src_tokens_size:", src_tokens.size())
+        probs, attn_scores = self.discriminator(samples, src_lengths, prev_output_tokens)
+        print(probs, attn_scores)
         rewards = []
-        for t in range(seqlen):
-            r = torch.log(probs[t])
+        for t in range(seqlen-1):
+            r = torch.log(probs[:, t])
             rewards.append(r)
 

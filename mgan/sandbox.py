@@ -35,7 +35,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=220, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=20, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -71,7 +71,7 @@ def dataset_test(args):
     criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
     model = LossGenerator(model, criterion)
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
-    model = DataParallel(model, output_device=2)
+    # model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
     model = model.to(device)
     # if os.path.exists(checkpoint_path):
