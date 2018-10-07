@@ -11,6 +11,7 @@ from fairseq.models.fairseq_model \
 from torch.distributions.categorical import Categorical
 from warnings import warn
 from torch import nn
+import torch
 
 from .generator import MGANGenerator
 from .discriminator import MGANDiscriminator
@@ -35,7 +36,10 @@ class MaskGAN(nn.Module):
     def forward(self, src_tokens, src_lengths, prev_output_tokens):
         logits, attns = self.generator(src_tokens, src_lengths, prev_output_tokens)
 
-        bsz, seqlen = logits.size()
+
+        bsz, seqlen, vocab_size = logits.size()
+        print("Logits size:", logits.size())
+
         # Sample from x converting it to probabilities
         samples = []
         distribution = {}
@@ -53,6 +57,7 @@ class MaskGAN(nn.Module):
 
         # Once all are sampled, it's possible to find the rewards from the generator.
         samples = torch.cat(samples, dim=1)
+        print("Samples:", samples.size())
         probs = self.discriminator(samples, src_lengths, prev_output_tokens)
         rewards = []
         for t in range(seqlen):

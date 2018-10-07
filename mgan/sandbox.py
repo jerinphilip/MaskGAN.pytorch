@@ -74,8 +74,8 @@ def dataset_test(args):
     model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
     model = model.to(device)
-    if os.path.exists(checkpoint_path):
-       load(model, opt, checkpoint_path)
+    # if os.path.exists(checkpoint_path):
+    #    load(model, opt, checkpoint_path)
 
 
 
