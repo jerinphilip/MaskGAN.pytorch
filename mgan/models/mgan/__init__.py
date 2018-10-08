@@ -45,7 +45,7 @@ class MaskGAN(nn.Module):
         distribution = {}
         for t in range(seqlen):
             # input is B x T x C post transposing
-            logit = logits[:, t, :]
+            logit = logits[:, t, :].detach()
             # Good news, categorical works for a batch.
             # B x H dimension. Looks like logit's are already in that form.
             distribution[t] = Categorical(logits=logit)
@@ -58,13 +58,27 @@ class MaskGAN(nn.Module):
         # Once all are sampled, it's possible to find the rewards from the generator.
         samples = torch.cat(samples, dim=1)
         # I may need to strip off an extra token generated.
-        samples = samples[:, :-1]
+        samples = samples[:, 1:]
         warn("Samples may not be the correct size. May need fixing")
         # print("Samples:", samples.size(), "src_tokens_size:", src_tokens.size())
         probs, attn_scores = self.discriminator(samples, src_lengths, prev_output_tokens)
-        print(probs, attn_scores)
-        rewards = []
+        r = []
         for t in range(seqlen-1):
-            r = torch.log(probs[:, t])
-            rewards.append(r)
+            _r = torch.log(probs[:, t])
+            r.append(_r)
+
+        R = [0 for i in range(seqlen)]
+        gamma_0 = 0.95
+        gamma_t = gamma_0
+        for t in reversed(range(seqlen-1)):
+            R[t] = gamma_t * r[t] + R[t+1]
+            gamma_t = gamma_t*gamma_0
+
+        E_R = 0
+        for t in range(seqlen-1):
+            d = distribution[t]
+            E_R += R[t]*d.log_prob(samples[:, t])
+
+        return -1*E_R
+
 

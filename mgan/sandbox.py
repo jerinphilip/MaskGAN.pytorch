@@ -69,7 +69,7 @@ def dataset_test(args):
 
 
     criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
-    model = LossGenerator(model, criterion)
+    #model = LossGenerator(model, criterion)
     checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
     # model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
