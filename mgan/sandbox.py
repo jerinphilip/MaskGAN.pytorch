@@ -18,6 +18,7 @@ from mgan.modules.generator import Generator, LossGenerator
 
 
 from mgan.models.mgan import MaskGAN
+import mgan.models.mgan as mgan
 
 
 class Args: 
@@ -87,11 +88,13 @@ def dataset_test(args):
             count += 1
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
-            loss = model(src, src_lens, tgt)
-            loss.sum().backward()
-            meters['loss'].update(loss.mean().item())
-            pbar.log(meters)
-            opt.step()
+            mgan.train(model, opt, src, src_lens, tgt)
+
+            # loss = model(src, src_lens, tgt)
+            # loss.sum().backward()
+            # meters['loss'].update(loss.mean().item())
+            # pbar.log(meters)
+            # opt.step()
 
 
         avg_loss = meters["loss"].avg
