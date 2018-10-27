@@ -21,7 +21,6 @@ class MGANCriticDecoder(LSTMDecoder):
 
     def forward(self, prev_output_tokens, encoder_out_dict, incremental_state=None):
         x, attn_scores = super().forward(prev_output_tokens, encoder_out_dict, incremental_state)
-        # x = torch.sigmoid(x)
         return x, attn_scores
 
 

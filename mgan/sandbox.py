@@ -78,8 +78,7 @@ def dataset_test(args):
     # if os.path.exists(checkpoint_path):
     #    load(model, opt, checkpoint_path)
 
-
-
+    train_routine = mgan.train(model, opt)
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()
@@ -88,7 +87,7 @@ def dataset_test(args):
             count += 1
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
-            mgan.train(model, opt, src, src_lens, tgt)
+            train_routine(src, src_lens, tgt)
 
             # loss = model(src, src_lens, tgt)
             # loss.sum().backward()
