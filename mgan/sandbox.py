@@ -79,6 +79,7 @@ def dataset_test(args):
     #    load(model, opt, checkpoint_path)
 
     train_routine = mgan.train(model, opt)
+    train_routine = mgan.pretrain(model, opt)
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()

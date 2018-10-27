@@ -34,6 +34,25 @@ class MaskGAN(nn.Module):
         critic = MGANCritic.build_model(args, task)
         return cls(generator, discriminator, critic)
 
+def pretrain(model, opt):
+    def _inner(src_tokens, src_lengths, prev_output_tokens):
+        criterion = nn.CrossEntropyLoss()
+        # Add ignore index somehow.
+        opt.zero_grad()
+        net_output = model.generator(src_tokens, src_lengths, prev_output_tokens)
+        logits = net_output[0].float()
+        logits = logits[:, :-1, :].contiguous()
+
+        T, B, H = logits.size()
+        logits = logits.view(T*B, -1)
+        target = prev_output_tokens[:, 1:].contiguous().view(-1)
+        loss = criterion(logits, target)
+        print("Pretrain Loss", loss.item())
+        loss.backward()
+        opt.step()
+    return _inner
+
+
 
 def train(model, opt): 
     def _inner(src_tokens, src_lengths, prev_output_tokens):
