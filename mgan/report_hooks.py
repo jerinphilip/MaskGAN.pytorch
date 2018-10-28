@@ -1,57 +1,37 @@
-from pprint import pprint
-import sys
-import torch
+import torchnet as tnt
+import functools
+from copy import deepcopy
 
-class DevNull:
-    def __call__(self, *args, **kwargs):
-        pass
-
-class Log:
-    def __init__(self, log_file=sys.stderr):
-        self.log_file = log_file
-
-    def __call__(self, _dict):
-        pprint(_dict, self.log_file)
+defaults = {
+    "server": "10.2.16.179",
+    "port": "8097"
+}
 
 
-class TransBatchCompileHook:
-    def __init__(self):
-        self.state = {}
+# Track a list of loggers, use meters.
+# Track a list of meters.
 
-    def __call__(self, _dict, step=False):
-        if not step:
-            self.state.update(_dict)
-        else:
-            self._handle(_dict)
+METER_REGISTRY = {}
+VISDOM_REGISTRY = {}
 
+def init_meters():
+    METER_REGISTRY["time"] = tnt.meter.TimeMeter()
+    METER_REGISTRY["train/epoch"] = tnt.meter.AverageValueMeter()
+    METER_REGISTRY["valid/epoch"] = tnt.meter.AverageValueMeter()
 
-    def _handle(self, _dict):
-        self.update("attns", _dict)
-        self.update("preds", _dict)
+def init_loggers():
+    VISDOM_REGISTRY["train/epoch"] = VisdomPlotLogger('line', opts={'Title': 'Train Loss'}, **defaults)
+    VISDOM_REGISTRY["valid/epoch"] = VisdomPlotLogger('line', opts={'Title': 'Valid Loss'}, **defaults)
 
-    def update(self, key, _dict):
-        if key  not in self.state:
-            self.state[key] = _dict[key].unsqueeze(0)
-        else:
-            a = self.state[key]
-            a_t = _dict[key].unsqueeze(0)
-            self.state[key] = torch.cat([a, a_t], dim=0)
-
-    def __len__(self):
-        T, B, H = self.state["inputs"].size()
-        return B
-
-    def __getitem__(self, idx):
-        assert(idx < len(self))
-        inputs = self.state["inputs"][:, idx, :]
-        if self.state["truths"] is not None:
-            truths = self.state["truths"][:, idx, :]
-        else:
-            truths = None
-        preds = self.state["preds"][:, idx]
-        attns = self.state["attns"][:, idx, :, :].squeeze(1)
-        return (inputs, truths, preds, attns)
+init_meters()
+init_loggers()
 
 
+def add(_id, value):
+    METER_REGISTRY[_id].add(value)
+
+def flush(_id):
+    mean, std = METER_REGISTRY[_id].value()
+    VISDOM_REGISTRY[_id].log(mean)
 
 

@@ -30,6 +30,7 @@ class MGANDiscriminatorDecoder(LSTMDecoder):
 
 
 class MGANDiscriminator(LSTMModel):
+    # Not great DRY, but works.
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""

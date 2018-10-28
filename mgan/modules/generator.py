@@ -1,6 +1,7 @@
 
 import torch.nn.functional as F
 from torch import nn
+import torch
 
 class Generator(nn.Module):
     def __init__(self, model):
@@ -33,3 +34,31 @@ class LossGenerator(nn.Module):
         return loss
 
 
+
+class LossModel(nn.Module):
+    def __init__(self, model, criterion):
+        self.model = model
+        self.criterion = criterion
+
+    def forward(*args, **kwargs):
+        raise NotImplementedError
+
+
+class DistributedTrain:
+    def __init__(self, model, opt):
+        assert(isinstance(model, LossModel))
+        self.model = model
+        self.distributed_model = DistributedDataParallel(model)
+        self.opt = opt
+
+    def train(self, inputs, targets):
+        loss = self.distributed_model(inputs, targets).mean()
+        self.opt.zero_grad()
+        loss.backward()
+        self.opt.step()
+        return loss.item()
+
+    def eval(self, inputs, targets):
+        with torch.no_grad():
+            loss = self.model(inputs, targets).mean()
+            return loss.item()

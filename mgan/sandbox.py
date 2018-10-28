@@ -27,7 +27,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.4}
+        "kwargs": {"probability": 0.1}
     }
 
     tokenize = {
@@ -36,7 +36,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=20, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=10, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -79,7 +79,7 @@ def dataset_test(args):
     #    load(model, opt, checkpoint_path)
 
     train_routine = mgan.train(model, opt)
-    train_routine = mgan.pretrain(model, opt)
+    #train_routine = mgan.pretrain(model, opt)
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()
