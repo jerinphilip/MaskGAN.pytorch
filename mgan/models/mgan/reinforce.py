@@ -1,4 +1,3 @@
-
 from torch import nn
 import torch
 
@@ -10,15 +9,11 @@ class REINFORCE(nn.Module):
     def forward(self, log_probs, logits):
         batch_size, seqlen, _ = logits.size()
         probs = torch.sigmoid(logits)
-        r = []
-        for t in range(seqlen):
-            _r = torch.log(probs[:, t])
-            r.append(_r)
-
+        r = torch.log(probs)
         R = [0 for i in range(seqlen+1)]
         gamma_t = self.gamma
         for t in reversed(range(seqlen)):
-            R[t] = gamma_t * r[t] + R[t+1]
+            R[t] = gamma_t * r[:, t] + R[t+1]
             gamma_t = gamma_t*self.gamma
 
         E_R = 0

@@ -24,8 +24,8 @@ def pretrain(model, opt):
 
 def train(model, opt): 
     def _inner(src_tokens, src_lengths, prev_output_tokens):
-        d_steps = 10
-        g_steps = 1
+        d_steps = 100
+        g_steps = 25
         criterion = torch.nn.BCEWithLogitsLoss()
 
         # Train discriminator to find actual sentences
@@ -66,7 +66,9 @@ def train(model, opt):
                         src_lengths, prev_output_tokens)
 
                 truths = torch.zeros_like(logits)
-                dloss = criterion(logits, truths)
+
+                eps = 1e-9
+                dloss = criterion(logits+eps, truths)
                 print("Discriminator Fake Loss:", dloss.item())
                 dloss.backward()
                 opt.step()
