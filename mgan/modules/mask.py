@@ -2,10 +2,8 @@ from torch import nn
 import torch
 import random
 
-
 class Mask:
     mask_token = '__<m>__'
-
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
@@ -16,10 +14,12 @@ class EndMask(Mask):
     
     def forward(self, xs):
         # x is supposed to be a set of tokens
+        mask = torch.zeros(self.n_chars)
         for i in range(self.n_chars):
             j = i+1
             xs[-j] = self.mask_token
-        return xs
+            mask[-j] = 1
+        return (xs, mask)
 
 
 
@@ -42,6 +42,6 @@ class StochasticMask(Mask):
                 mask.append(False)
 
         mask = torch.Tensor(mask)
-        return ys, mask
+        return (ys, mask)
 
 

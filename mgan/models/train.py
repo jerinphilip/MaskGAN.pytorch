@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from .reinforce import REINFORCE
+from mgan.criterions.reinforce import REINFORCE
 
 def pretrain(model, opt):
     def _inner(src_tokens, src_lengths, prev_output_tokens):

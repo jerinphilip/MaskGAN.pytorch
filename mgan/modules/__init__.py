@@ -1,6 +1,7 @@
 
 from . import mask, tokenize
 from torch import nn
+import torch
 
 
 class Preprocess(nn.Module):
@@ -16,7 +17,6 @@ class Preprocess(nn.Module):
 
     def __init__(self, mask, tokenize):
         super().__init__()
-
         mtype, args, kwargs = self.triplet(mask)
         self.mask = self.MASK_REGISTRY[mtype](*args, **kwargs)
 
@@ -24,8 +24,12 @@ class Preprocess(nn.Module):
         self.tokenize = self.TOKENIZE_REGISTRY[ttype](*args, **kwargs)
 
     def forward(self, seq, mask=True):
-        if mask: return self.mask(self.tokenize(seq))
-        return self.tokenize(seq)
+        tokenized = self.tokenize(seq)
+        if mask: 
+            tokens, mask = self.mask(tokenized)
+        else:
+            tokens, mask = tokenized, torch.zeros(len(tokenized))
+        return tokens, mask
 
     def triplet(self, payload):
         mtype = payload["type"]

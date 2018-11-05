@@ -2,7 +2,6 @@ from mgan.data import IMDbDataset, TensorIMDbDataset
 from argparse import ArgumentParser
 from mgan.modules import Preprocess
 from torch.utils.data import DataLoader
-from mgan.models import MaskedMLE
 from collections import namedtuple
 from torch.nn import functional as F
 from torch import optim
@@ -17,8 +16,8 @@ from torch import nn
 from mgan.modules.generator import Generator, LossGenerator
 
 
-from mgan.models.mgan import MaskGAN
-import mgan.models.mgan as mgan
+from mgan.models import MaskGAN
+from mgan.models import train, pretrain
 
 
 class Args: 
@@ -79,7 +78,7 @@ def dataset_test(args):
         load(model, opt, checkpoint_path)
 
     #train_routine = mgan.train(model, opt)
-    train_routine = mgan.pretrain(model, opt)
+    train_routine = pretrain(model, opt)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)

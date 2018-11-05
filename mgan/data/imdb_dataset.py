@@ -53,7 +53,7 @@ class TensorIMDbDataset(IMDbDataset):
         self.vocab.add_symbol(self.preprocess.mask.mask_token)
         for i in tqdm(range(self.length), desc='build-vocab'):
             contents = super().__getitem__(i)
-            tokens = self.preprocess(contents, mask=False)
+            tokens, mask = self.preprocess(contents, mask=False)
             tokens, token_count = self._truncate(tokens)
             for token in tokens:
                 self.vocab.add_symbol(token)
@@ -76,10 +76,13 @@ class TensorIMDbDataset(IMDbDataset):
         return (src, src_length, tgt, tgt_length)
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
-        tokens = self.preprocess(contents, mask=masked)
+        tokens, mask = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
-        idxs = []
+        
+        mask = mask[:token_count+1]
+        mask[-1] = 0
 
+        idxs = []
         if move_eos_to_beginning:
             idxs.append(self.vocab.eos())
             token_count += 1
