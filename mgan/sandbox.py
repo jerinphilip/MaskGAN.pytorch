@@ -1,23 +1,25 @@
-from mgan.data import IMDbDataset, TensorIMDbDataset
+# General Imports
 from argparse import ArgumentParser
-from mgan.modules import Preprocess
-from torch.utils.data import DataLoader
+from tqdm import tqdm
 from collections import namedtuple
+
+# Torch imports
+import torch
 from torch.nn import functional as F
 from torch import optim
+from torch.utils.data import DataLoader
+
+
+# FairSeq imports
 from fairseq.meters import AverageMeter
 from fairseq.progress_bar import tqdm_progress_bar
 from fairseq.sequence_generator import SequenceGenerator
-from tqdm import tqdm
-import torch
-import os
-from torch.nn import DataParallel
-from torch import nn
-from mgan.modules.generator import Generator, LossGenerator
 
-
+from mgan.preproc import Preprocess
+from mgan.data import IMDbDataset, TensorIMDbDataset
 from mgan.models import MaskGAN
 from mgan.models import train, pretrain
+from mgan.utils import Saver
 
 
 class Args: 
@@ -45,39 +47,15 @@ def dataset_test(args):
 
     device = torch.device('cuda')
 
-    def checkpoint(model, opt, checkpoint_path):
-        _payload = {
-            "model": model.state_dict(),
-            "opt": opt.state_dict()
-        }
-
-        with open(checkpoint_path, "wb+") as fp:
-            torch.save(_payload, fp)
-
-    def load(model, opt, checkpoint_path):
-        _payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
-        #_payload = torch.load(checkpoint_path)
-        model.load_state_dict(_payload["model"])
-        opt.load_state_dict(_payload["opt"])
-
-
     args = Args()
     # model = MaskedMLE.build_model(args, task)
+    max_epochs = 100
+
+    checkpoint_path = "/scratch/jerin/mgan/"
+    saver = Saver(checkpoint_path)
     model = MaskGAN.build_model(args, task, pretrain=True)
-    reduce = True
-    max_epochs = 1
-
-
-    criterion = nn.NLLLoss(ignore_index=dataset.vocab.pad())
-    #model = LossGenerator(model, criterion)
-    checkpoint_path = "/scratch/jerin/best_checkpoint.pt"
-    # model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
     model = model.to(device)
-    if os.path.exists(checkpoint_path):
-        load(model, opt, checkpoint_path)
-
-    #train_routine = mgan.train(model, opt)
     train_routine = pretrain(model, opt)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
@@ -89,17 +67,16 @@ def dataset_test(args):
             opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
             train_routine(src, src_lens, tgt)
+            if count > 10: break
 
             # loss = model(src, src_lens, tgt)
             # loss.sum().backward()
             # meters['loss'].update(loss.mean().item())
             # pbar.log(meters)
             # opt.step()
-
-
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
-        checkpoint(model, opt, checkpoint_path)
+        saver.checkpoint(model, opt, "test")
 
     # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
     # for src, src_lens, tgt, tgt_lens in loader:
