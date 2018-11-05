@@ -48,7 +48,7 @@ def dataset_test(args):
 
     def checkpoint(model, opt, checkpoint_path):
         _payload = {
-            "model": model.module.state_dict(),
+            "model": model.state_dict(),
             "opt": opt.state_dict()
         }
 
@@ -58,13 +58,13 @@ def dataset_test(args):
     def load(model, opt, checkpoint_path):
         _payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
         #_payload = torch.load(checkpoint_path)
-        model.module.load_state_dict(_payload["model"])
+        model.load_state_dict(_payload["model"])
         opt.load_state_dict(_payload["opt"])
 
 
     args = Args()
     # model = MaskedMLE.build_model(args, task)
-    model = MaskGAN.build_model(args, task)
+    model = MaskGAN.build_model(args, task, pretrain=True)
     reduce = True
     max_epochs = 1
 
@@ -75,11 +75,12 @@ def dataset_test(args):
     # model = DataParallel(model, output_device=2)
     opt = optim.Adam(model.parameters())
     model = model.to(device)
-    # if os.path.exists(checkpoint_path):
-    #    load(model, opt, checkpoint_path)
+    if os.path.exists(checkpoint_path):
+        load(model, opt, checkpoint_path)
 
-    train_routine = mgan.train(model, opt)
-    #train_routine = mgan.pretrain(model, opt)
+    #train_routine = mgan.train(model, opt)
+    train_routine = mgan.pretrain(model, opt)
+
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()
@@ -101,21 +102,21 @@ def dataset_test(args):
         meters['epoch'].update(avg_loss)
         checkpoint(model, opt, checkpoint_path)
 
-    seq_gen = SequenceGenerator([model.module.model], dataset.vocab, beam_size=5)
-    for src, src_lens, tgt, tgt_lens in loader:
-        src = src.to(device)
-        encoder_input = {"src_tokens": src, "src_lengths": src_lens}
-        samples = seq_gen.generate(encoder_input, maxlen=20)
-        for i, sample in enumerate(samples):
-           # print(sample[0].keys())
-           src_str = dataset.vocab.string(src[i, :])
-           tgt_str = dataset.vocab.string(tgt[i, :])
-           pred_str = dataset.vocab.string(sample[0]['tokens'])
-           print(">", src_str)
-           print("<", pred_str)
-           print("=", tgt_str)
-           print("")
-        break
+    # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
+    # for src, src_lens, tgt, tgt_lens in loader:
+    #     src = src.to(device)
+    #     encoder_input = {"src_tokens": src, "src_lengths": src_lens}
+    #     samples = seq_gen.generate(encoder_input, maxlen=20)
+    #     for i, sample in enumerate(samples):
+    #        # print(sample[0].keys())
+    #        src_str = dataset.vocab.string(src[i, :])
+    #        tgt_str = dataset.vocab.string(tgt[i, :])
+    #        pred_str = dataset.vocab.string(sample[0]['tokens'])
+    #        print(">", src_str)
+    #        print("<", pred_str)
+    #        print("=", tgt_str)
+    #        print("")
+    #     break
 
 
 

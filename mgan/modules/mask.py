@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 import random
 
 
@@ -30,12 +31,17 @@ class StochasticMask(Mask):
     def forward(self, xs):
         ys = []
         mask_count = 0
+        mask = []
         for i, x in enumerate(xs):
             if self.r.random() < self.p:
                 mask_count += 1
                 ys.append(self.mask_token)
+                mask.append(True)
             else:
                 ys.append(x)
-        return ys
+                mask.append(False)
+
+        mask = torch.Tensor(mask)
+        return ys, mask
 
 

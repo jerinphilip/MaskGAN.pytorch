@@ -15,7 +15,7 @@ def pretrain(model, opt):
         logits = logits.view(T*B, -1)
         target = prev_output_tokens[:, 1:].contiguous().view(-1)
         loss = criterion(logits, target)
-        print("Pretrain Loss", loss.item())
+        # print("Pretrain Loss", loss.item())
         loss.backward()
         opt.step()
     return _inner

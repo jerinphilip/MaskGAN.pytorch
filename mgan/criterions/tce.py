@@ -6,10 +6,10 @@ class TCELoss(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         pass
 
-    def forward(self, predictions, truths):
-        T, B, H = predictions.size()
-        predictions = predictions.view(-1, H)
+    def forward(self, pred_logits, truths):
+        T, B, H = pred_logits.size()
+        pred_logits = pred_logits.view(-1, H)
         truths = truths.view(-1)
-        return self.criterion(predictions, truths)
+        return self.criterion(pred_logits, truths)
 
 
