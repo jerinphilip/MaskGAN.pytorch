@@ -79,7 +79,6 @@ class TensorIMDbDataset(IMDbDataset):
         tokens, mask = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
         
-
         mask = mask[:token_count+1]
         idxs = []
         if move_eos_to_beginning:
@@ -101,7 +100,7 @@ class TensorIMDbDataset(IMDbDataset):
     def collate(samples):
         # TODO: Implement Collate
         srcs, src_lengths, src_masks, \
-                tgts, tgt_lengths, tgt_mask = list(zip(*samples))
+                tgts, tgt_lengths, tgt_masks = list(zip(*samples))
 
         src_lengths = torch.LongTensor(src_lengths)
         tgt_lengths = torch.LongTensor(tgt_lengths)
@@ -117,11 +116,14 @@ class TensorIMDbDataset(IMDbDataset):
         src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
         src_masks = src_masks.index_select(1, sort_order)
 
+        tgt_masks = torch.stack(tgt_masks).permute(1, 0).contiguous()
+        tgt_masks = tgt_masks.index_select(1, sort_order)
+
         batch_first = True
 
         if batch_first:
             srcs = srcs.permute(1, 0).contiguous()
             tgts = tgts.permute(1, 0).contiguous()
 
-        return (srcs, src_lengths, tgts, tgt_lengths)
+        return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
 

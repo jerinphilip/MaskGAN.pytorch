@@ -17,8 +17,9 @@ from fairseq.sequence_generator import SequenceGenerator
 
 from mgan.preproc import Preprocess
 from mgan.data import IMDbDataset, TensorIMDbDataset
-from mgan.models import MaskGAN
-from mgan.models import train, pretrain
+# from mgan.models import MaskGAN
+# from mgan.models import train, pretrain
+from mgan.modules import build_trainer
 from mgan.utils import Saver
 
 
@@ -53,20 +54,21 @@ def dataset_test(args):
 
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
-    model = MaskGAN.build_model(args, task, pretrain=True)
-    opt = optim.Adam(model.parameters())
-    model = model.to(device)
-    train_routine = pretrain(model, opt)
+    # model = MaskGAN.build_model(args, task, pretrain=True)
+    # opt = optim.Adam(model.parameters())
+    # model = model.to(device)
+    trainer = build_trainer(args, task)
+    # train_routine = pretrain(model, opt)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         meters["loss"].reset()
         count = 0
-        for src, src_lens, tgt, tgt_lens in pbar:
+        for src, src_lens, src_mask, tgt, tgt_lens, tgt_mask in pbar:
             count += 1
-            opt.zero_grad()
             src, tgt = src.to(device), tgt.to(device)
-            train_routine(src, src_lens, tgt)
+            summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
+            print(summary)
             if count > 10: break
 
             # loss = model(src, src_lens, tgt)
@@ -76,7 +78,7 @@ def dataset_test(args):
             # opt.step()
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
-        saver.checkpoint(model, opt, "test")
+        #saver.checkpoint(model, opt, "test")
 
     # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
     # for src, src_lens, tgt, tgt_lens in loader:

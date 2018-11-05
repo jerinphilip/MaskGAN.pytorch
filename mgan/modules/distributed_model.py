@@ -1,22 +1,25 @@
+import torch
 from torch import nn
 from mgan.criterions import TCELoss, REINFORCE
-from mgan.models import MLEGenerator, MLEGenerator, MGANDiscriminator
+from mgan.models import MLEGenerator, MLEGenerator, \
+        MGANDiscriminator, MGANGenerator
 
 class DistributedModel(nn.Module):
     def __init__(self, model, criterion):
         super().__init__()
         self.model = model
         self.criterion = criterion
+        print(self.model, self.criterion)
 
-    def forward(*args, **kwargs):
+    def forward(self, *args, **kwargs):
         raise NotImplementedError
 
 
 
 class MLEDistributedGenerator(DistributedModel):
     @classmethod
-    def build(cls, args, task):
-        model = MLEGenerator.build(args, task)
+    def build_model(cls, args, task):
+        model = MLEGenerator.build_model(args, task)
         criterion = TCELoss()
         return cls(model, criterion)
 
@@ -29,13 +32,13 @@ class MLEDistributedGenerator(DistributedModel):
         target = prev_output_tokens[:, 1:].contiguous().view(-1)
 
         loss = self.criterion(logits, target)
-        return loss
+        return (loss, None)
 
-class MGANGDistributedGenerator(DistributedModel):
+class MGANDistributedGenerator(DistributedModel):
     @classmethod
-    def build(cls, args, task):
-        model = MLEGenerator.build(args, task)
-        criterion = REINFORCE()
+    def build_model(cls, args, task):
+        model = MGANGenerator.build_model(args, task)
+        criterion = REINFORCE(gamma=0.6)
         return cls(model, criterion)
 
     def forward(self, src_tokens, src_lengths, prev_output_tokens, discriminator):
@@ -48,10 +51,10 @@ class MGANGDistributedGenerator(DistributedModel):
         return (loss, samples)
 
 
-class MGANGDistributedDiscriminator(DistributedModel):
+class MGANDistributedDiscriminator(DistributedModel):
     @classmethod
-    def build(cls, args, task):
-        model = MGANGDiscriminator.build(args, task)
+    def build_model(cls, args, task):
+        model = MGANDiscriminator.build_model(args, task)
         criterion = torch.nn.BCEWithLogitsLoss()
         return cls(model, criterion)
 
@@ -66,7 +69,7 @@ class MGANGDistributedDiscriminator(DistributedModel):
             truths = torch.zeros_like(logits)
 
         loss = self.criterion(logits,  truths)
-        return loss
+        return (loss, None)
 
 
 
