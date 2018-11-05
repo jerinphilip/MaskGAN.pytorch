@@ -1,3 +1,9 @@
 
 from .distributed_model import DistributedModel
 from .distributed_train import DistributedTrain
+
+from .distributed_model import          \
+        MGANGDistributedGenerator,      \
+        MGANGDistributedDiscriminator
+
+

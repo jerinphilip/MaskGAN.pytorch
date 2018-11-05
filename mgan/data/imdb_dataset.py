@@ -71,21 +71,23 @@ class TensorIMDbDataset(IMDbDataset):
 
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
-        tgt, tgt_length = self.Tensor_idxs(contents, masked=False, move_eos_to_beginning=True)
-        src, src_length  = self.Tensor_idxs(contents, masked=True)
-        return (src, src_length, tgt, tgt_length)
+        tgt, tgt_length, tgt_mask = self.Tensor_idxs(contents, masked=False, move_eos_to_beginning=True)
+        src, src_length, src_mask  = self.Tensor_idxs(contents, masked=True)
+        return (src, src_length, src_mask, tgt, tgt_length, tgt_mask)
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
         tokens, mask = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
         
-        mask = mask[:token_count+1]
-        mask[-1] = 0
 
+        mask = mask[:token_count+1]
         idxs = []
         if move_eos_to_beginning:
             idxs.append(self.vocab.eos())
             token_count += 1
+            mask[0] = 0
+        else:
+            mask[-1] = 0
 
         for token in tokens:
             idxs.append(self.vocab.index(token))
@@ -93,12 +95,13 @@ class TensorIMDbDataset(IMDbDataset):
         idxs.append(self.vocab.eos())
         token_count += 1
 
-        return (torch.LongTensor(idxs), token_count)
+        return (torch.LongTensor(idxs), token_count, mask)
 
     @staticmethod
     def collate(samples):
         # TODO: Implement Collate
-        srcs, src_lengths, tgts, tgt_lengths = list(zip(*samples))
+        srcs, src_lengths, src_masks, \
+                tgts, tgt_lengths, tgt_mask = list(zip(*samples))
 
         src_lengths = torch.LongTensor(src_lengths)
         tgt_lengths = torch.LongTensor(tgt_lengths)
@@ -110,6 +113,9 @@ class TensorIMDbDataset(IMDbDataset):
 
         srcs = srcs.index_select(1, sort_order)
         tgts = tgts.index_select(1, sort_order)
+
+        src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
+        src_masks = src_masks.index_select(1, sort_order)
 
         batch_first = True
 
