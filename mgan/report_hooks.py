@@ -1,37 +1,48 @@
 import torchnet as tnt
 import functools
 from copy import deepcopy
-
-defaults = {
-    "server": "10.2.16.179",
-    "port": "8097"
-}
+from torchnet.logger import VisdomPlotLogger, VisdomLogger
 
 
 # Track a list of loggers, use meters.
 # Track a list of meters.
 
-METER_REGISTRY = {}
-VISDOM_REGISTRY = {}
-
-def init_meters():
-    METER_REGISTRY["time"] = tnt.meter.TimeMeter()
-    METER_REGISTRY["train/epoch"] = tnt.meter.AverageValueMeter()
-    METER_REGISTRY["valid/epoch"] = tnt.meter.AverageValueMeter()
-
-def init_loggers():
-    VISDOM_REGISTRY["train/epoch"] = VisdomPlotLogger('line', opts={'Title': 'Train Loss'}, **defaults)
-    VISDOM_REGISTRY["valid/epoch"] = VisdomPlotLogger('line', opts={'Title': 'Valid Loss'}, **defaults)
-
-init_meters()
-init_loggers()
+class devnull:
+    def __init__(self, *args, **kwargs): pass
+    def log(self, *args, **kwargs): pass
 
 
-def add(_id, value):
-    METER_REGISTRY[_id].add(value)
+class VisdomCentral:
+    def __init__(self, defaults):
+        self.loggers = {}
+        self.devnull = devnull()
+        self.counter = {}
 
-def flush(_id):
-    mean, std = METER_REGISTRY[_id].value()
-    VISDOM_REGISTRY[_id].log(mean)
+    def log(self, tag, _type, value):
+        # print(tag, _type, value)
+        logger = self.get_logger(tag, _type)
+        self.counter[tag] += 1
+        logger.log(self.counter[tag], value)
 
+    def get_logger(self, tag, _type):
+        if tag not in self.loggers:
+            self.loggers[tag] = self._create_logger(_type)
+            self.counter[tag] = 0
+        return self.loggers[tag]
+    
+    def _create_logger(self, _type):
+        _dict = {
+                "line": VisdomPlotLogger('line', 
+                                 opts={'title': 'Train Loss'}, 
+                                 **defaults)
+        }
 
+        return _dict.get(_type, self.devnull)
+
+defaults = {
+    "server": "localhost",
+    "port": "8097",
+    "env": "main",
+}
+
+visdom = VisdomCentral(defaults)

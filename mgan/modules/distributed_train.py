@@ -11,6 +11,12 @@ class DistributedTrain:
         self.distributed_model = DataParallel(model)
         self.opt = opt
 
+    def load_state_dict(self, state):
+        self.model.load_state_dict(state)
+
+    def state_dict(self):
+        return self.model.state_dict()
+
     def __call__(self, *args, **kwargs):
         self.opt.zero_grad()
         loss, samples = self.distributed_model(*args, **kwargs)

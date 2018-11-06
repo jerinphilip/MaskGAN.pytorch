@@ -21,6 +21,7 @@ from mgan.data import IMDbDataset, TensorIMDbDataset
 # from mgan.models import train, pretrain
 from mgan.modules import build_trainer
 from mgan.utils import Saver
+from mgan.report_hooks import visdom
 
 
 class Args: 
@@ -49,16 +50,13 @@ def dataset_test(args):
     device = torch.device('cuda')
 
     args = Args()
-    # model = MaskedMLE.build_model(args, task)
     max_epochs = 100
 
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
-    # model = MaskGAN.build_model(args, task, pretrain=True)
-    # opt = optim.Adam(model.parameters())
-    # model = model.to(device)
     trainer = build_trainer("MLE", args, task)
-    # train_routine = pretrain(model, opt)
+
+    saver.load(trainer.generator.model, trainer.generator.opt, "generator-pretrain")
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
@@ -68,15 +66,11 @@ def dataset_test(args):
             count += 1
             src, tgt = src.to(device), tgt.to(device)
             summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
-            print(summary)
-            # loss = model(src, src_lens, tgt)
-            # loss.sum().backward()
-            # meters['loss'].update(loss.mean().item())
-            # pbar.log(meters)
-            # opt.step()
+            visdom.log('generator-loss-vs-epoch', 'line', summary['Generator Loss'])
+
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
-        #saver.checkpoint(model, opt, "test")
+        saver.checkpoint(trainer.generator.model, trainer.generator.opt, "generator-pretrain")
 
     # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
     # for src, src_lens, tgt, tgt_lens in loader:

@@ -11,6 +11,12 @@ class DistributedModel(nn.Module):
         self.criterion = criterion
         print(self.model, self.criterion)
 
+    def load_state_dict(self, state):
+        self.model.load_state_dict(state)
+
+    def state_dict(self):
+        return self.model.state_dict()
+
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 

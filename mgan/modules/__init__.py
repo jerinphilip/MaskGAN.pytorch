@@ -56,7 +56,7 @@ class MLETrainer:
     def __call__(self, src_tokens, src_lengths, src_mask,
             tgt_tokens, tgt_lengths, tgt_mask):
 
-        gloss = self.generator(src_tokens, src_lengths, tgt_tokens)
+        gloss, _ = self.generator(src_tokens, src_lengths, tgt_tokens)
         return {"Generator Loss": gloss}
 
 
