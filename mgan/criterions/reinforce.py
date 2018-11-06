@@ -6,7 +6,7 @@ class REINFORCE(nn.Module):
         self.gamma = gamma
         super().__init__()
 
-    def forward(self, log_probs, logits):
+    def forward(self, log_probs, logits, baselines=None):
         batch_size, seqlen, _ = logits.size()
         probs = torch.sigmoid(logits)
         r = torch.log(probs)

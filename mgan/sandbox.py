@@ -38,7 +38,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=10, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=160, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
 
@@ -57,7 +57,7 @@ def dataset_test(args):
     # model = MaskGAN.build_model(args, task, pretrain=True)
     # opt = optim.Adam(model.parameters())
     # model = model.to(device)
-    trainer = build_trainer(args, task)
+    trainer = build_trainer("MLE", args, task)
     # train_routine = pretrain(model, opt)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
@@ -69,8 +69,6 @@ def dataset_test(args):
             src, tgt = src.to(device), tgt.to(device)
             summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             print(summary)
-            if count > 10: break
-
             # loss = model(src, src_lens, tgt)
             # loss.sum().backward()
             # meters['loss'].update(loss.mean().item())

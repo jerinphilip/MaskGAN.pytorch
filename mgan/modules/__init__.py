@@ -4,7 +4,8 @@ from .distributed_train import DistributedTrain
 
 from .distributed_model import          \
         MGANDistributedGenerator,      \
-        MGANDistributedDiscriminator
+        MGANDistributedDiscriminator,  \
+        MLEDistributedGenerator
 
 import torch
 
@@ -28,11 +29,11 @@ class MGANTrainer:
 
         d_real_loss, _ = self.discriminator(
                         prev_output_tokens[:, 1:], src_lengths, 
-                        prev_output_tokens)
+                        prev_output_tokens, real=True)
 
         d_fake_loss, _  = self.discriminator(
                         samples, src_lengths, 
-                        prev_output_tokens)
+                        prev_output_tokens, real=False)
 
         return {
                 "Generator Loss": gloss,
@@ -44,7 +45,7 @@ class MGANTrainer:
 
 class MLETrainer:
     def __init__(self, args, task):
-        generator = MGANGDistributedGenerator(args, task)
+        generator = MLEDistributedGenerator.build_model(args, task)
         #discriminator = MGANGDistributedDiscriminator(args, task)
 
         gopt = torch.optim.Adam(generator.parameters())
@@ -55,12 +56,21 @@ class MLETrainer:
     def __call__(self, src_tokens, src_lengths, src_mask,
             tgt_tokens, tgt_lengths, tgt_mask):
 
-        gloss = generator(src_tokens, src_lengths, tgt_tokens)
+        gloss = self.generator(src_tokens, src_lengths, tgt_tokens)
         return {"Generator Loss": gloss}
 
 
 
-def build_trainer(args, task):
-    trainer = MGANTrainer(args, task)
-    return trainer
+def build_trainer(tag, args, task):
+    if tag == 'MLE':
+        trainer = MLETrainer(args, task)
+        return trainer
+
+    elif tag == 'MGAN':
+        trainer = MGANTrainer(args, task)
+        return trainer
+    
+    else:
+        raise Exception("Unknown tag")
+
 

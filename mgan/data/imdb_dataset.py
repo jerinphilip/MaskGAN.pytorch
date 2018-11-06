@@ -76,17 +76,18 @@ class TensorIMDbDataset(IMDbDataset):
         return (src, src_length, src_mask, tgt, tgt_length, tgt_mask)
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
-        tokens, mask = self.preprocess(contents, mask=masked)
+        tokens, tmask = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
         
-        mask = mask[:token_count+1]
         idxs = []
         if move_eos_to_beginning:
+            mask = torch.zeros(token_count+2)
             idxs.append(self.vocab.eos())
+            mask[1:token_count+1] = tmask[:token_count]
             token_count += 1
-            mask[0] = 0
         else:
-            mask[-1] = 0
+            mask = torch.zeros(token_count+1)
+            mask[:token_count] = tmask[:token_count]
 
         for token in tokens:
             idxs.append(self.vocab.index(token))
@@ -113,11 +114,15 @@ class TensorIMDbDataset(IMDbDataset):
         srcs = srcs.index_select(1, sort_order)
         tgts = tgts.index_select(1, sort_order)
 
-        src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
-        src_masks = src_masks.index_select(1, sort_order)
+        # TODO(jerin): Fix this.
+        # src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
+        # src_masks = src_masks.index_select(1, sort_order)
 
-        tgt_masks = torch.stack(tgt_masks).permute(1, 0).contiguous()
-        tgt_masks = tgt_masks.index_select(1, sort_order)
+        # tgt_masks = torch.stack(tgt_masks).permute(1, 0).contiguous()
+        # tgt_masks = tgt_masks.index_select(1, sort_order)
+
+        src_masks = None
+        tgt_masks = None
 
         batch_first = True
 

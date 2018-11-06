@@ -11,16 +11,16 @@ class DistributedTrain:
         self.distributed_model = DataParallel(model)
         self.opt = opt
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         self.opt.zero_grad()
-        loss, samples = self.distributed_model(*args)
+        loss, samples = self.distributed_model(*args, **kwargs)
         loss = loss.mean()
         loss.backward()
         self.opt.step()
         return (loss.item(), samples)
 
-    def eval(self, *args):
+    def eval(self, *args, **kwargs):
         with torch.no_grad():
-            loss, _ = self.model(*args)
+            loss, _ = self.model(*args, **kwargs)
             loss = loss.mean()
             return loss.item()
