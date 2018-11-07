@@ -30,7 +30,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.4}
+        "kwargs": {"probability": 0.15}
     }
 
     tokenize = {
@@ -75,24 +75,27 @@ def dataset_test(args):
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
-        #visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
+        visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
         saver.checkpoint_trainer(trainer)
 
-    # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
-    # for src, src_lens, tgt, tgt_lens in loader:
-    #     src = src.to(device)
-    #     encoder_input = {"src_tokens": src, "src_lengths": src_lens}
-    #     samples = seq_gen.generate(encoder_input, maxlen=20)
-    #     for i, sample in enumerate(samples):
-    #        # print(sample[0].keys())
-    #        src_str = dataset.vocab.string(src[i, :])
-    #        tgt_str = dataset.vocab.string(tgt[i, :])
-    #        pred_str = dataset.vocab.string(sample[0]['tokens'])
-    #        print(">", src_str)
-    #        print("<", pred_str)
-    #        print("=", tgt_str)
-    #        print("")
-    #     break
+        seq_gen = SequenceGenerator([trainer.generator.model.model], 
+                dataset.vocab, beam_size=5)
+        #pbar = tqdm_progress_bar(loader, epoch=epoch)
+        for src, src_lens, _, tgt, tgt_lens, _ in loader:
+            src = src.to(device)
+            encoder_input = {"src_tokens": src, "src_lengths": src_lens}
+            samples = seq_gen.generate(encoder_input, maxlen=20)
+            for i, sample in enumerate(samples):
+               src_str = dataset.vocab.string(src[i, :])
+               tgt_str = dataset.vocab.string(tgt[i, :])
+               pred_str = dataset.vocab.string(sample[0]['tokens'])
+               closure = lambda s: visdom.log("gen-output", "text-append", s)
+               closure("> {}".format(src_str))
+               closure("< {}".format(pred_str))
+               closure("< {}".format(tgt_str))
+               closure("")
+            trainer.generator.model.model.train()
+            break
 
 if __name__ == '__main__':
     parser = ArgumentParser()

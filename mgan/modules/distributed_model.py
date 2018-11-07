@@ -20,6 +20,8 @@ class DistributedModel(nn.Module):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
+    def underlying_model(self):
+        return self.model.model
 
 
 class MLEDistributedGenerator(DistributedModel):
