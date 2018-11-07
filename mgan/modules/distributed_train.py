@@ -10,12 +10,10 @@ class DistributedTrain:
         self.model = self.model.to(device)
         self.distributed_model = DataParallel(model)
         self.opt = opt
+        self.device = device
 
-    def load_state_dict(self, state):
-        self.model.load_state_dict(state)
-
-    def state_dict(self):
-        return self.model.state_dict()
+    def parallel(self):
+        self.model = self.model.to(self.device)
 
     def __call__(self, *args, **kwargs):
         self.opt.zero_grad()
@@ -27,6 +25,6 @@ class DistributedTrain:
 
     def eval(self, *args, **kwargs):
         with torch.no_grad():
-            loss, _ = self.model(*args, **kwargs)
+            loss, samples = self.model(*args, **kwargs)
             loss = loss.mean()
-            return loss.item()
+            return (loss.item(), samples)

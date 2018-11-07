@@ -30,16 +30,16 @@ class VisdomCentral:
         elif _type == 'text-append':
             logger.log(value)
 
-    def get_logger(self, tag, _type):
+    def get_logger(self, tag, _type, *args):
         if tag not in self.loggers:
-            self.loggers[tag] = self._create_logger(_type)
+            self.loggers[tag] = self._create_logger(_type, tag)
             self.counter[tag] = 0
         return self.loggers[tag]
     
-    def _create_logger(self, _type):
+    def _create_logger(self, _type, *args):
         _dict = {
                 "line": VisdomPlotLogger('line', 
-                                 opts={'title': 'Train Loss'}, 
+                                 opts={'title': args[0]}, 
                                  **defaults),
                 "text-append": VisdomTextLogger(update_type='APPEND')
         }

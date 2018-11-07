@@ -30,21 +30,38 @@ class MGANTrainer:
             tgt_tokens, tgt_lengths, tgt_mask):
 
         prev_output_tokens = tgt_tokens
-        gloss, samples = self.generator(src_tokens, src_lengths, 
-                prev_output_tokens, self.discriminator.model.model)
 
-        d_real_loss, _ = self.discriminator(
-                        prev_output_tokens[:, 1:], src_lengths, 
-                        prev_output_tokens, real=True)
+        g_steps, d_steps = 10, 10
 
-        d_fake_loss, _  = self.discriminator(
-                        samples, src_lengths, 
-                        prev_output_tokens, real=False)
+        gloss, d_real_loss, d_fake_loss = 0, 0, 0
+
+        for step in range(g_steps):
+            _gloss, samples = self.generator(src_tokens, src_lengths, 
+                    prev_output_tokens, self.discriminator.model.model)
+            gloss += _gloss
+
+
+        for step in range(d_steps):
+            _d_real_loss, _ = self.discriminator(
+                            prev_output_tokens[:, 1:], src_lengths, 
+                            prev_output_tokens, real=True)
+
+
+            _gloss, samples = self.generator.eval(src_tokens, src_lengths, 
+                    prev_output_tokens, self.discriminator.model.model)
+
+            _d_fake_loss, _  = self.discriminator(
+                             samples, src_lengths, 
+                             prev_output_tokens, real=False)
+            
+            d_real_loss += _d_real_loss
+            d_fake_loss += _d_fake_loss
+
 
         return {
-                "Generator Loss": gloss,
-                "Discriminator Real Loss": d_real_loss,
-                "Discriminator Fake Loss": d_fake_loss
+                "Generator Loss": gloss/g_steps,
+                "Discriminator Real Loss": d_real_loss/d_steps,
+                "Discriminator Fake Loss": d_fake_loss/d_steps
         }
 
 

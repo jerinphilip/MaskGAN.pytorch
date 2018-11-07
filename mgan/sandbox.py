@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 # FairSeq imports
 from fairseq.meters import AverageMeter
 from fairseq.progress_bar import tqdm_progress_bar
-from fairseq.sequence_generator import SequenceGenerator
 
 from mgan.preproc import Preprocess
 from mgan.data import IMDbDataset, TensorIMDbDataset
@@ -21,8 +20,8 @@ from mgan.data import IMDbDataset, TensorIMDbDataset
 # from mgan.models import train, pretrain
 from mgan.modules import build_trainer
 from mgan.utils import Saver
+from mgan.utils.debug_generate import debug_generate
 from mgan.report_hooks import visdom
-
 
 class Args: 
     criterion = 'dummy'
@@ -39,7 +38,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=160, 
+    loader = DataLoader(dataset, batch_size=20, 
             collate_fn=TensorIMDbDataset.collate, 
             shuffle=True, num_workers=16)
 
@@ -59,7 +58,7 @@ def dataset_test(args):
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
     trainer = build_trainer("MLE", args, task)
-    #trainer = build_trainer("MGAN", args, task)
+    trainer = build_trainer("MGAN", args, task)
 
     saver.load_trainer(trainer)
 
@@ -71,31 +70,16 @@ def dataset_test(args):
             count += 1
             src, tgt = src.to(device), tgt.to(device)
             summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
+            # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
             visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
+            visdom.log('discriminator-real-loss-vs-steps', 'line', summary['Discriminator Real Loss'])
+            visdom.log('discriminator-fake-loss-vs-steps', 'line', summary['Discriminator Fake Loss'])
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
         visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
         saver.checkpoint_trainer(trainer)
-
-        seq_gen = SequenceGenerator([trainer.generator.model.model], 
-                dataset.vocab, beam_size=5)
-        #pbar = tqdm_progress_bar(loader, epoch=epoch)
-        for src, src_lens, _, tgt, tgt_lens, _ in loader:
-            src = src.to(device)
-            encoder_input = {"src_tokens": src, "src_lengths": src_lens}
-            samples = seq_gen.generate(encoder_input, maxlen=20)
-            for i, sample in enumerate(samples):
-               src_str = dataset.vocab.string(src[i, :])
-               tgt_str = dataset.vocab.string(tgt[i, :])
-               pred_str = dataset.vocab.string(sample[0]['tokens'])
-               closure = lambda s: visdom.log("gen-output", "text-append", s)
-               closure("> {}".format(src_str))
-               closure("< {}".format(pred_str))
-               closure("< {}".format(tgt_str))
-               closure("")
-            trainer.generator.model.model.train()
-            break
+        #debug_generate(trainer.generator.model.model, loader, dataset.vocab, visdom)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
