@@ -10,6 +10,10 @@ class Saver:
             os.makedirs(self.path)
             warn("{path} doesn't exist. Creating.".format(path=path))
 
+    def checkpoint_trainer(self, trainer, is_best=False):
+        for tag, savable in trainer.savable:
+            self.checkpoint(savable.model, savable.opt, tag, is_best)
+
     def checkpoint(self, model, opt, tag, is_best=False):
         _payload = {}
         _payload["model"] = model.state_dict()
@@ -44,3 +48,6 @@ class Saver:
         else:
             warn("FileDoesNotExist: {path}, no weights loaded.".format(path=checkpoint_path))
             
+    def load_trainer(self, trainer, is_best=False):
+        for tag, savable in trainer.savable:
+            self.load(savable.model, savable.opt, tag, is_best)

@@ -30,7 +30,7 @@ class Args:
 def dataset_test(args):
     mask = {
         "type": "random",
-        "kwargs": {"probability": 0.1}
+        "kwargs": {"probability": 0.4}
     }
 
     tokenize = {
@@ -39,9 +39,13 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=160, collate_fn=TensorIMDbDataset.collate, shuffle=True, num_workers=16)
+    loader = DataLoader(dataset, batch_size=160, 
+            collate_fn=TensorIMDbDataset.collate, 
+            shuffle=True, num_workers=16)
+
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
-    task = Task(source_dictionary=dataset.vocab, target_dictionary=dataset.vocab)
+    task = Task(source_dictionary=dataset.vocab, 
+            target_dictionary=dataset.vocab)
 
     meters = {}
     meters['epoch'] = AverageMeter()
@@ -55,8 +59,9 @@ def dataset_test(args):
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
     trainer = build_trainer("MLE", args, task)
+    #trainer = build_trainer("MGAN", args, task)
 
-    saver.load(trainer.generator.model, trainer.generator.opt, "generator-pretrain")
+    saver.load_trainer(trainer)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
@@ -66,11 +71,12 @@ def dataset_test(args):
             count += 1
             src, tgt = src.to(device), tgt.to(device)
             summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
-            visdom.log('generator-loss-vs-epoch', 'line', summary['Generator Loss'])
+            visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
-        saver.checkpoint(trainer.generator.model, trainer.generator.opt, "generator-pretrain")
+        #visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
+        saver.checkpoint_trainer(trainer)
 
     # seq_gen = SequenceGenerator([model], dataset.vocab, beam_size=5)
     # for src, src_lens, tgt, tgt_lens in loader:
@@ -87,8 +93,6 @@ def dataset_test(args):
     #        print("=", tgt_str)
     #        print("")
     #     break
-
-
 
 if __name__ == '__main__':
     parser = ArgumentParser()

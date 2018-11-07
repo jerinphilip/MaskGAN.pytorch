@@ -21,11 +21,17 @@ class MGANTrainer:
         dopt = torch.optim.Adam(discriminator.parameters())
         self.discriminator = DistributedTrain(discriminator, dopt)
 
+        self.savable = [
+            ("mgan-generator", self.generator),
+            ("mgan-discriminator", self.discriminator)
+        ]
+
     def __call__(self, src_tokens, src_lengths, src_mask, 
             tgt_tokens, tgt_lengths, tgt_mask):
 
         prev_output_tokens = tgt_tokens
-        gloss, samples = self.generator(src_tokens, src_lengths, prev_output_tokens, self.discriminator.model.model)
+        gloss, samples = self.generator(src_tokens, src_lengths, 
+                prev_output_tokens, self.discriminator.model.model)
 
         d_real_loss, _ = self.discriminator(
                         prev_output_tokens[:, 1:], src_lengths, 
@@ -46,13 +52,14 @@ class MGANTrainer:
 class MLETrainer:
     def __init__(self, args, task):
         generator = MLEDistributedGenerator.build_model(args, task)
-        #discriminator = MGANGDistributedDiscriminator(args, task)
 
         gopt = torch.optim.Adam(generator.parameters())
         self.generator = DistributedTrain(generator, gopt)
 
-        # dopt = torch.optim.Adam(discriminator.parameters())
-        #self.discriminator = DistributedTrain(discriminator, dopt)
+        self.savable = [
+            ("mle-generator", self.generator),
+        ]
+
     def __call__(self, src_tokens, src_lengths, src_mask,
             tgt_tokens, tgt_lengths, tgt_mask):
 
