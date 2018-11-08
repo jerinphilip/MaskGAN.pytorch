@@ -12,8 +12,8 @@ import torch
 
 class MGANTrainer:
     def __init__(self, args, task):
-        generator = MGANDistributedGenerator.build_model(args, task)
         discriminator = MGANDistributedDiscriminator.build_model(args, task)
+        generator = MGANDistributedGenerator.build_model(args, task, discriminator.model)
 
         gopt = torch.optim.Adam(generator.parameters())
         self.generator = DistributedTrain(generator, gopt)
@@ -37,7 +37,7 @@ class MGANTrainer:
 
         for step in range(g_steps):
             _gloss, samples = self.generator(src_tokens, src_lengths, 
-                    prev_output_tokens, self.discriminator.model.model)
+                    prev_output_tokens)
             gloss += _gloss
 
 
@@ -48,7 +48,7 @@ class MGANTrainer:
 
 
             _gloss, samples = self.generator.eval(src_tokens, src_lengths, 
-                    prev_output_tokens, self.discriminator.model.model)
+                    prev_output_tokens)
 
             _d_fake_loss, _  = self.discriminator(
                              samples, src_lengths, 

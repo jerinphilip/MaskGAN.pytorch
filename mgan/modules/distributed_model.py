@@ -9,7 +9,6 @@ class DistributedModel(nn.Module):
         super().__init__()
         self.model = model
         self.criterion = criterion
-        print(self.model, self.criterion)
 
     def load_state_dict(self, state):
         self.model.load_state_dict(state)
@@ -21,7 +20,7 @@ class DistributedModel(nn.Module):
         raise NotImplementedError
 
     def underlying_model(self):
-        return self.model.model
+        return self.model
 
 
 class MLEDistributedGenerator(DistributedModel):
@@ -43,17 +42,22 @@ class MLEDistributedGenerator(DistributedModel):
         return (loss, None)
 
 class MGANDistributedGenerator(DistributedModel):
+    def __init__(self, model, criterion, discriminator):
+        super().__init__(model, criterion)
+        self.discriminator = discriminator
+
     @classmethod
-    def build_model(cls, args, task):
+    def build_model(cls, args, task, discriminator):
         model = MGANGenerator.build_model(args, task)
         criterion = REINFORCE(gamma=0.6)
-        return cls(model, criterion)
+        return cls(model, criterion, discriminator)
 
-    def forward(self, src_tokens, src_lengths, prev_output_tokens, discriminator):
+    def forward(self, src_tokens, src_lengths, prev_output_tokens):
         samples, log_probs, attns = self.model(src_tokens, 
                         src_lengths, prev_output_tokens)
-        logits, attn_scores = discriminator(samples, 
+        logits, attn_scores = self.discriminator(samples, 
                 src_lengths, prev_output_tokens)
+        # print(logits)
         reward = self.criterion(log_probs, logits)
         loss = -1*reward.mean()
         return (loss, samples)

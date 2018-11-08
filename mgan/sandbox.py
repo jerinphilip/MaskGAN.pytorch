@@ -71,9 +71,12 @@ def dataset_test(args):
             src, tgt = src.to(device), tgt.to(device)
             summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
-            visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
-            visdom.log('discriminator-real-loss-vs-steps', 'line', summary['Discriminator Real Loss'])
-            visdom.log('discriminator-fake-loss-vs-steps', 'line', summary['Discriminator Fake Loss'])
+            visdom.log('generator-loss-vs-steps', 
+                    'line', summary['Generator Loss'])
+            visdom.log('discriminator-real-loss-vs-steps', 
+                    'line', summary['Discriminator Real Loss'])
+            visdom.log('discriminator-fake-loss-vs-steps', 
+                    'line', summary['Discriminator Fake Loss'])
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
