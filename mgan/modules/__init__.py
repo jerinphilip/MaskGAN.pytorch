@@ -1,61 +1,62 @@
 
-from .distributed_model import DistributedModel
 from .distributed_train import DistributedTrain
 
 from .distributed_model import          \
-        MGANDistributedGenerator,      \
-        MGANDistributedDiscriminator,  \
-        MLEDistributedGenerator
+        MLEDistributedGenerator, MGANModel
+from torch.nn.parallel import DataParallel
 
 import torch
 
 
 class MGANTrainer:
     def __init__(self, args, task):
-        discriminator = MGANDistributedDiscriminator.build_model(args, task)
-        generator = MGANDistributedGenerator.build_model(args, task, discriminator.model)
+        model = MGANModel.build_model(args, task)
+        device = torch.device("cuda")
+        self.model = DataParallel(model)
+        self.opt = torch.optim.Adam(self.model.parameters())
+        self.model = self.model.to(device)
 
-        gopt = torch.optim.Adam(generator.parameters())
-        self.generator = DistributedTrain(generator, gopt)
+        self.dopt = self.opt
+        self.gopt = self.opt
 
-        dopt = torch.optim.Adam(discriminator.parameters())
-        self.discriminator = DistributedTrain(discriminator, dopt)
 
-        self.savable = [
-            ("mgan-generator", self.generator),
-            ("mgan-discriminator", self.discriminator)
-        ]
-
-    def __call__(self, src_tokens, src_lengths, src_mask, 
+    def run(self, src_tokens, src_lengths, src_mask, 
             tgt_tokens, tgt_lengths, tgt_mask):
 
         prev_output_tokens = tgt_tokens
-
         g_steps, d_steps = 10, 10
-
         gloss, d_real_loss, d_fake_loss = 0, 0, 0
-
-        for step in range(g_steps):
-            _gloss, samples = self.generator(src_tokens, src_lengths, 
-                    prev_output_tokens)
-            gloss += _gloss
 
 
         for step in range(d_steps):
-            _d_real_loss, _ = self.discriminator(
+            self.dopt.zero_grad()
+
+            _d_real_loss, _ = self.model("d-step",
                             prev_output_tokens[:, 1:], src_lengths, 
                             prev_output_tokens, real=True)
 
+            with torch.no_grad():
+                _gloss, samples = self.model("g-step", 
+                                src_tokens, src_lengths, 
+                                prev_output_tokens)
 
-            _gloss, samples = self.generator.eval(src_tokens, src_lengths, 
-                    prev_output_tokens)
-
-            _d_fake_loss, _  = self.discriminator(
+            _d_fake_loss, _  = self.model("d-step",
                              samples, src_lengths, 
                              prev_output_tokens, real=False)
+            loss = (_d_real_loss + _d_fake_loss)/2
+            loss.backward()
+            self.dopt.step()
             
-            d_real_loss += _d_real_loss
-            d_fake_loss += _d_fake_loss
+            d_real_loss += _d_real_loss.item()
+            d_fake_loss += _d_fake_loss.item()
+
+        for step in range(g_steps):
+            self.gopt.zero_grad()
+            _gloss, samples = self.model("g-step", src_tokens, src_lengths, 
+                    prev_output_tokens)
+            _gloss.backward()
+            self.gopt.step()
+            gloss += _gloss.item()
 
 
         return {
@@ -70,8 +71,8 @@ class MLETrainer:
     def __init__(self, args, task):
         generator = MLEDistributedGenerator.build_model(args, task)
 
-        gopt = torch.optim.Adam(generator.parameters())
-        self.generator = DistributedTrain(generator, gopt)
+        self.generator = DistributedTrain(generator)
+        self.generator.construct_optimizer(torch.optim.Adam)
 
         self.savable = [
             ("mle-generator", self.generator),

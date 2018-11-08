@@ -38,7 +38,7 @@ def dataset_test(args):
 
     preprocess = Preprocess(mask, tokenize)
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=20, 
+    loader = DataLoader(dataset, batch_size=1, 
             collate_fn=TensorIMDbDataset.collate, 
             shuffle=True, num_workers=16)
 
@@ -60,7 +60,7 @@ def dataset_test(args):
     trainer = build_trainer("MLE", args, task)
     trainer = build_trainer("MGAN", args, task)
 
-    saver.load_trainer(trainer)
+    # saver.load_trainer(trainer)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
@@ -68,8 +68,10 @@ def dataset_test(args):
         count = 0
         for src, src_lens, src_mask, tgt, tgt_lens, tgt_mask in pbar:
             count += 1
-            src, tgt = src.to(device), tgt.to(device)
-            summary = trainer(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
+            # src, tgt = src.to(device), tgt.to(device)
+            # src_mask, tgt_mask = src_mask.to(device), tgt_mask.to(device)
+            # src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
+            summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
             visdom.log('generator-loss-vs-steps', 
                     'line', summary['Generator Loss'])
