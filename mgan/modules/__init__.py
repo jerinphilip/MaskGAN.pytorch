@@ -37,16 +37,18 @@ class MGANTrainer:
         d_real_loss, d_fake_loss = 0, 0,
         for step in range(d_steps):
             self.dopt.zero_grad()
-            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], src_lengths, 
+            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], 
+                                src_lengths, src_mask,
                             prev_output_tokens, tag="d-step", real=True)
 
             _d_real_loss = _d_real_loss.mean()
 
             with torch.no_grad():
                 _gloss, samples = self.model(src_tokens, src_lengths, 
+                        src_mask,
                                 prev_output_tokens, tag="g-step")
 
-            _d_fake_loss, _  = self.model(samples, src_lengths, 
+            _d_fake_loss, _  = self.model(samples, src_lengths, src_mask,
                              prev_output_tokens, tag="d-step", real=False)
 
             _d_fake_loss = _d_fake_loss.mean()
@@ -70,7 +72,7 @@ class MGANTrainer:
 
         for step in range(g_steps):
             self.gopt.zero_grad()
-            _gloss, samples = self.model(src_tokens, src_lengths, 
+            _gloss, samples = self.model(src_tokens, src_lengths, src_mask,
                     prev_output_tokens, tag="g-step")
             _gloss = _gloss.mean()
             _gloss.backward()

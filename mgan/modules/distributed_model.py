@@ -29,8 +29,9 @@ class MGANModel(nn.Module):
 
         # Build discriminator
         discriminator = MGANDiscriminator.build_model(args, task)
-        bceloss = torch.nn.BCEWithLogitsLoss()
-        dloss = LossModel(discriminator, bceloss)
+        #bceloss = torch.nn.BCEWithLogitsLoss()
+        tceloss = TCELoss()
+        dloss = LossModel(discriminator, tceloss)
 
         return cls(gloss, dloss)
 
@@ -39,7 +40,7 @@ class MGANModel(nn.Module):
             return self._gstep(*args)
         return self._dstep(*args, real=kwargs['real'])
 
-    def _gstep(self, src_tokens, src_lengths, prev_output_tokens):
+    def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
         samples, log_probs, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
@@ -53,7 +54,7 @@ class MGANModel(nn.Module):
         loss = -1*reward.mean()
         return (loss, samples)
 
-    def _dstep(self, src_tokens, src_lengths, prev_output_tokens, real=True):
+    def _dstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens, real=True):
         logits, attn_scores = self.discriminator.model(
                 prev_output_tokens[:, 1:], 
                 src_lengths, 
@@ -61,9 +62,9 @@ class MGANModel(nn.Module):
 
         truths = torch.ones_like(logits)
         if not real:
-            truths = torch.zeros_like(logits)
+            truths = torch.ones_like(src_mask) - src_mask
 
-        loss = self.discriminator.criterion(logits,  truths)
+        loss = self.discriminator.criterion(logits, truths, weight=src_mask)
         return (loss, None)
 
 

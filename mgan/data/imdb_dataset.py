@@ -81,12 +81,12 @@ class TensorIMDbDataset(IMDbDataset):
         
         idxs = []
         if move_eos_to_beginning:
-            mask = torch.zeros(len(tokens)+2)
+            mask = torch.zeros(len(tokens)+2+1)
             idxs.append(self.vocab.eos())
             mask[1:token_count+1] = tmask[:token_count]
             token_count += 1
         else:
-            mask = torch.zeros(len(tokens)+1)
+            mask = torch.zeros(len(tokens)+1+1)
             mask[:token_count] = tmask[:token_count]
 
         for token in tokens:
@@ -117,9 +117,11 @@ class TensorIMDbDataset(IMDbDataset):
         # TODO(jerin): Fix this.
         src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
         src_masks = src_masks.index_select(1, sort_order)
+        src_masks = src_masks.permute(1, 0).contiguous()
 
         tgt_masks = torch.stack(tgt_masks).permute(1, 0).contiguous()
         tgt_masks = tgt_masks.index_select(1, sort_order)
+        tgt_masks = tgt_masks.permute(1, 0).contiguous()
 
         # src_masks = None
         # tgt_masks = None
