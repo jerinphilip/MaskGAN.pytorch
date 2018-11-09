@@ -40,7 +40,6 @@ class MGANModel(nn.Module):
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, prev_output_tokens):
-
         samples, log_probs, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 

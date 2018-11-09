@@ -10,10 +10,10 @@ import torch
 
 class MGANTrainer:
     def __init__(self, args, task):
-        model = MGANModel.build_model(args, task)
-        self.model = DataParallel(model)
         device = torch.device("cuda")
+        self.model = MGANModel.build_model(args, task)
         self.model = self.model.to(device)
+        self.model = DataParallel(self.model)
         self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
 
         self.dopt = self.opt
