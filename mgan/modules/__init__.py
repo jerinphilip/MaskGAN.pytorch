@@ -10,39 +10,48 @@ import torch
 
 class MGANTrainer:
     def __init__(self, args, task):
-        model = MGANModel.build_model(args, task)
         device = torch.device("cuda")
-        self.model = DataParallel(model)
-        self.opt = torch.optim.Adam(self.model.parameters())
+        self.model = MGANModel.build_model(args, task)
         self.model = self.model.to(device)
+        self.model = DataParallel(self.model)
+        self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
 
         self.dopt = self.opt
         self.gopt = self.opt
 
 
-    def run(self, src_tokens, src_lengths, src_mask, 
+    def run(self, *args):
+        g_steps, d_steps = 10, 10
+        summary = {}
+        discriminator_summary = self.run_dsteps(d_steps, *args)
+        generator_summary = self.run_gsteps(g_steps, *args)
+
+        summary.update(discriminator_summary)
+        summary.update(generator_summary)
+        return summary
+
+    def run_dsteps(self, d_steps, src_tokens, src_lengths, src_mask, 
             tgt_tokens, tgt_lengths, tgt_mask):
 
         prev_output_tokens = tgt_tokens
-        g_steps, d_steps = 10, 10
-        gloss, d_real_loss, d_fake_loss = 0, 0, 0
-
-
+        d_real_loss, d_fake_loss = 0, 0,
         for step in range(d_steps):
             self.dopt.zero_grad()
+            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], 
+                                src_lengths, src_mask,
+                            prev_output_tokens, tag="d-step", real=True)
 
-            _d_real_loss, _ = self.model("d-step",
-                            prev_output_tokens[:, 1:], src_lengths, 
-                            prev_output_tokens, real=True)
+            _d_real_loss = _d_real_loss.mean()
 
             with torch.no_grad():
-                _gloss, samples = self.model("g-step", 
-                                src_tokens, src_lengths, 
-                                prev_output_tokens)
+                _gloss, samples = self.model(src_tokens, src_lengths, 
+                        src_mask,
+                                prev_output_tokens, tag="g-step")
 
-            _d_fake_loss, _  = self.model("d-step",
-                             samples, src_lengths, 
-                             prev_output_tokens, real=False)
+            _d_fake_loss, _  = self.model(samples, src_lengths, src_mask,
+                             prev_output_tokens, tag="d-step", real=False)
+
+            _d_fake_loss = _d_fake_loss.mean()
             loss = (_d_real_loss + _d_fake_loss)/2
             loss.backward()
             self.dopt.step()
@@ -50,19 +59,29 @@ class MGANTrainer:
             d_real_loss += _d_real_loss.item()
             d_fake_loss += _d_fake_loss.item()
 
+        return {
+                "Discriminator Real Loss": d_real_loss/d_steps,
+                "Discriminator Fake Loss": d_fake_loss/d_steps
+        }
+
+    def run_gsteps(self, g_steps, src_tokens, src_lengths, src_mask, 
+            tgt_tokens, tgt_lengths, tgt_mask):
+
+        prev_output_tokens = tgt_tokens
+        gloss = 0
+
         for step in range(g_steps):
             self.gopt.zero_grad()
-            _gloss, samples = self.model("g-step", src_tokens, src_lengths, 
-                    prev_output_tokens)
+            _gloss, samples = self.model(src_tokens, src_lengths, src_mask,
+                    prev_output_tokens, tag="g-step")
+            _gloss = _gloss.mean()
             _gloss.backward()
             self.gopt.step()
             gloss += _gloss.item()
 
 
         return {
-                "Generator Loss": gloss/g_steps,
-                "Discriminator Real Loss": d_real_loss/d_steps,
-                "Discriminator Fake Loss": d_fake_loss/d_steps
+                "Generator Loss": gloss/g_steps
         }
 
 
