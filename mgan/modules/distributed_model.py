@@ -34,14 +34,13 @@ class MGANModel(nn.Module):
 
         return cls(gloss, dloss)
 
-    def forward(self, tag, *args, **kwargs):
-        if tag == 'g-step': 
-            return self._gstep(*args, **kwargs)
-        elif tag == 'd-step': 
-            return self._dstep(*args, **kwargs)
-        raise Exception("Unknown tag")
+    def forward(self, *args, **kwargs):
+        if kwargs['tag'] == 'g-step':
+            return self._gstep(*args)
+        return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, prev_output_tokens):
+
         samples, log_probs, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
