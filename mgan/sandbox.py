@@ -40,7 +40,7 @@ def dataset_test(args):
     dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
     loader = DataLoader(dataset, batch_size=128, 
             collate_fn=TensorIMDbDataset.collate, 
-            shuffle=True, num_workers=16)
+            shuffle=False, num_workers=16)
 
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, 
@@ -53,24 +53,27 @@ def dataset_test(args):
     device = torch.device('cuda')
 
     args = Args()
-    max_epochs = 100
+    max_epochs = 1000
 
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
     trainer = build_trainer("MLE", args, task)
     trainer = build_trainer("MGAN", args, task)
 
-    # saver.load_trainer(trainer)
+    saver.load_trainer(trainer)
+    save_every = 20
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
-        pbar = tqdm_progress_bar(loader, epoch=epoch)
+        # new_loader = [next(iter(loader))]
+        new_loader = loader
+        pbar = tqdm_progress_bar(new_loader, epoch=epoch)
         meters["loss"].reset()
         count = 0
         for src, src_lens, src_mask, tgt, tgt_lens, tgt_mask in pbar:
             count += 1
             # src, tgt = src.to(device), tgt.to(device)
             # src_mask, tgt_mask = src_mask.to(device), tgt_mask.to(device)
-            # src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
+            src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
             summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
             visdom.log('generator-loss-vs-steps', 
@@ -79,6 +82,9 @@ def dataset_test(args):
                     'line', summary['Discriminator Real Loss'])
             visdom.log('discriminator-fake-loss-vs-steps', 
                     'line', summary['Discriminator Fake Loss'])
+            if count % (save_every) == 0:
+                saver.checkpoint_trainer(trainer)
+
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)

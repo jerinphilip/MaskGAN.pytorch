@@ -41,6 +41,7 @@ class MGANModel(nn.Module):
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
+
         samples, log_probs, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
@@ -51,7 +52,7 @@ class MGANModel(nn.Module):
         logits = logits.detach()
 
         reward = self.generator.criterion(log_probs, logits)
-        loss = -1*reward.mean()
+        loss = -1*reward
         return (loss, samples)
 
     def _dstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens, real=True):
@@ -60,9 +61,8 @@ class MGANModel(nn.Module):
                 src_lengths, 
                 prev_output_tokens)
 
-        truths = torch.ones_like(logits)
-        if not real:
-            truths = torch.ones_like(src_mask) - src_mask
+        src_mask = src_mask.unsqueeze(2)
+        truths = torch.ones_like(logits) if real else torch.ones_like(logits) - src_mask
 
         loss = self.discriminator.criterion(logits, truths, weight=src_mask)
         return (loss, None)

@@ -1,6 +1,9 @@
 from torch import nn
 import torch
 
+# TODO(jerin): Need to fix this as per
+# https://github.com/tensorflow/models/blob/master/research/maskgan/model_utils/model_losses.py
+
 class REINFORCE(nn.Module):
     def __init__(self, gamma):
         self.gamma = gamma
@@ -20,6 +23,6 @@ class REINFORCE(nn.Module):
         for t in range(seqlen-11):
             E_R += R[t]*log_probs[t]
 
-        return E_R
+        return E_R.mean()
 
 

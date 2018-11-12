@@ -27,11 +27,12 @@ class IMDbDataset(Dataset):
 
     def __getitem__(self, idx):
         fpath = self.sample_files[idx]
-        contents = open(fpath).read()
-        ignores = ['<br>', '<br/>', '<br />']
-        for ignore in ignores:
-            contents = contents.replace(ignore, '')
-        return contents
+        with open(fpath) as fp:
+            contents = fp.read()
+            ignores = ['<br>', '<br/>', '<br />']
+            for ignore in ignores:
+                contents = contents.replace(ignore, '')
+            return contents
 
 class TensorIMDbDataset(IMDbDataset):
     def __init__(self, path, preprocess, truncate=40):

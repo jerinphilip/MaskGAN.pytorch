@@ -16,6 +16,7 @@ class MGANGEncoder(LSTMEncoder): pass
 class MGANGDecoder(LSTMDecoder): pass
 class MGANGenerator(LSTMModel):
     def forward(self, src_tokens, src_lengths, prev_output_tokens):
+        self.encoder.lstm.flatten_parameters()
         logits, attns = super().forward(src_tokens, src_lengths, prev_output_tokens)
         bsz, seqlen, vocab_size = logits.size()
         # print("Logits size:", logits.size())
