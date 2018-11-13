@@ -12,7 +12,8 @@ class Preprocess(nn.Module):
     }
 
     TOKENIZE_REGISTRY = {
-        "space": tokenize.SpaceTokenizer
+        "space": tokenize.SpaceTokenizer,
+        "spm": tokenize.SentencePieceTokenizer
     }
 
     def __init__(self, mask, tokenize):

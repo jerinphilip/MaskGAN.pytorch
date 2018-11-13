@@ -35,11 +35,11 @@ class IMDbDataset(Dataset):
             return contents
 
 class TensorIMDbDataset(IMDbDataset):
-    def __init__(self, path, preprocess, truncate=40):
+    def __init__(self, path, preprocess, truncate=40, rebuild=False):
         super().__init__(path)
         self.preprocess = preprocess
         self.truncate = truncate
-        self.build_vocab()
+        self.build_vocab(rebuild=rebuild)
 
     def build_vocab(self, rebuild=False):
         vocab_path = os.path.join(self.path, 'vocab.pt')

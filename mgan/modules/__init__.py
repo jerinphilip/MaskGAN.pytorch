@@ -28,9 +28,9 @@ class MGANTrainer:
         summary = {}
         discriminator_summary = self.run_dsteps(d_steps, *args)
         torch.cuda.empty_cache()
-        generator_summary = self.run_gsteps(g_steps, *args)
-        torch.cuda.empty_cache()
-        # generator_summary = {"Generator Loss": 0}
+        # generator_summary = self.run_gsteps(g_steps, *args)
+        # torch.cuda.empty_cache()
+        generator_summary = {"Generator Loss": 0}
 
         summary.update(discriminator_summary)
         summary.update(generator_summary)

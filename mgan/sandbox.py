@@ -33,12 +33,13 @@ def dataset_test(args):
     }
 
     tokenize = {
-        "type": "space",
+        "type": "spm",
+        "kwargs": {"model_path": args.spm_path}
     }
 
     preprocess = Preprocess(mask, tokenize)
-    dataset = TensorIMDbDataset(args.path, preprocess, truncate=20)
-    loader = DataLoader(dataset, batch_size=128, 
+    dataset = TensorIMDbDataset(args.path, preprocess, truncate=20, rebuild=False)
+    loader = DataLoader(dataset, batch_size=512, 
             collate_fn=TensorIMDbDataset.collate, 
             shuffle=False, num_workers=16)
 
@@ -73,7 +74,7 @@ def dataset_test(args):
             count += 1
             # src, tgt = src.to(device), tgt.to(device)
             # src_mask, tgt_mask = src_mask.to(device), tgt_mask.to(device)
-            src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
+            # src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
             summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
             visdom.log('generator-loss-vs-steps', 
@@ -95,6 +96,7 @@ def dataset_test(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--path', required=True)
+    parser.add_argument('--spm_path', required=True)
     args = parser.parse_args()
     dataset_test(args)
 
