@@ -9,20 +9,31 @@ class REINFORCE(nn.Module):
         self.gamma = gamma
         super().__init__()
 
-    def forward(self, log_probs, logits, baselines=None):
+    def forward(self, log_probs, logits, weight, baselines=None):
+        EPS = 1e-7
         batch_size, seqlen, _ = logits.size()
         probs = torch.sigmoid(logits)
-        r = torch.log(probs)
-        R = [0 for i in range(seqlen+1)]
-        gamma_t = self.gamma
-        for t in reversed(range(seqlen)):
-            R[t] = gamma_t * r[:, t] + R[t+1]
-            gamma_t = gamma_t*self.gamma
+        rewards = torch.log(probs + EPS)
 
-        E_R = 0
-        for t in range(seqlen-11):
-            E_R += R[t]*log_probs[t]
+        rewards = rewards.squeeze(2)
+        logits = logits.squeeze(2)
+        # print(rewards.size(), logits.size(), weight.size())
 
-        return E_R.mean()
+        rewards = rewards * weight
+        logits = logits * weight
+
+        cumulative_rewards = []
+        for t in range(seqlen):
+            cum_value = rewards.new_zeros(batch_size)
+            for s in range(t, seqlen):
+                exp = float(s-t)
+                k = (self.gamma ** exp)
+                cum_value +=  weight[:, s]  * rewards[:, s] * log_probs[:, s]
+            cumulative_rewards.append(cum_value)
+
+        cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
+        missing = weight.sum()
+        reward = cumulative_rewards.sum()/ missing
+        return reward
 
 
