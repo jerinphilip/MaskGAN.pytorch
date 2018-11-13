@@ -76,7 +76,8 @@ class MGANTrainer:
 
         return {
                 "Discriminator Real Loss": d_real_loss/d_steps,
-                "Discriminator Fake Loss": d_fake_loss/d_steps
+                "Discriminator Fake Loss": d_fake_loss/d_steps,
+                "Discriminator Overall Loss": (d_fake_loss+d_real_loss)/(2*d_steps)
         }
 
     def run_gsteps(self, g_steps, src_tokens, src_lengths, src_mask, 

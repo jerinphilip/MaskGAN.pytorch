@@ -34,7 +34,19 @@ class IMDbDataset(Dataset):
                 contents = contents.replace(ignore, '')
             return contents
 
-class TensorIMDbDataset(IMDbDataset):
+class IMDbSingleDataset(Dataset):
+    def __init__(self, path):
+        self.path = path
+        self.lines = open(self.path).read().splitlines()
+        # self.precompute()
+
+    def __len__(self):
+        return len(self.lines)
+
+    def __getitem__(self, idx):
+        return self.lines[idx]
+
+class TensorIMDbDataset(IMDbSingleDataset):
     def __init__(self, path, preprocess, truncate=40, rebuild=False):
         super().__init__(path)
         self.preprocess = preprocess
@@ -42,17 +54,18 @@ class TensorIMDbDataset(IMDbDataset):
         self.build_vocab(rebuild=rebuild)
 
     def build_vocab(self, rebuild=False):
-        vocab_path = os.path.join(self.path, 'vocab.pt')
+        ## vocab_path = os.path.join(self.path + '.vocab.pt')
+        vocab_path = self.path + '.vocab.pt'
         if os.path.exists(vocab_path) and not rebuild:
             self.vocab = Dictionary.load(vocab_path)
         else:
             self.rebuild_vocab()
     
     def rebuild_vocab(self):
-        vocab_path = os.path.join(self.path, 'vocab.pt')
+        vocab_path = self.path + '.vocab.pt'
         self.vocab = Dictionary()
         self.vocab.add_symbol(self.preprocess.mask.mask_token)
-        for i in tqdm(range(self.length), desc='build-vocab'):
+        for i in tqdm(range(len(self)), desc='build-vocab'):
             contents = super().__getitem__(i)
             tokens, mask = self.preprocess(contents, mask=False)
             tokens, token_count = self._truncate(tokens)
@@ -74,6 +87,7 @@ class TensorIMDbDataset(IMDbDataset):
         contents = super().__getitem__(idx)
         tgt, tgt_length, tgt_mask = self.Tensor_idxs(contents, masked=False, move_eos_to_beginning=True)
         src, src_length, src_mask  = self.Tensor_idxs(contents, masked=True)
+        #assert(tgt_length == src_length)
         return (src, src_length, src_mask, tgt, tgt_length, tgt_mask)
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
@@ -108,6 +122,7 @@ class TensorIMDbDataset(IMDbDataset):
         tgt_lengths = torch.LongTensor(tgt_lengths)
 
         src_lengths, sort_order = src_lengths.sort(descending=True)
+        tgt_lengths = tgt_lengths.index_select(0, sort_order)
 
         srcs = pad_sequence(srcs)
         tgts = pad_sequence(tgts)
@@ -133,5 +148,7 @@ class TensorIMDbDataset(IMDbDataset):
             srcs = srcs.permute(1, 0).contiguous()
             tgts = tgts.permute(1, 0).contiguous()
 
+        # print(srcs.size(), src_lengths, tgts.size(), tgt_lengths)
         return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
+
 

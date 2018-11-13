@@ -28,8 +28,10 @@ class Preprocess(nn.Module):
         tokenized = self.tokenize(seq)
         if mask: 
             tokens, mask = self.mask(tokenized)
+            #print(seq, "Mask", len(tokens))
         else:
             tokens, mask = tokenized, torch.zeros(len(tokenized))
+            # print(seq, "No Mask", len(tokens))
         return tokens, mask
 
     def triplet(self, payload):

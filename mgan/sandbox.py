@@ -38,8 +38,8 @@ def dataset_test(args):
     }
 
     preprocess = Preprocess(mask, tokenize)
-    dataset = TensorIMDbDataset(args.path, preprocess, truncate=20, rebuild=False)
-    loader = DataLoader(dataset, batch_size=512, 
+    dataset = TensorIMDbDataset(args.path, preprocess, truncate=50, rebuild=False)
+    loader = DataLoader(dataset, batch_size=2048, 
             collate_fn=TensorIMDbDataset.collate, 
             shuffle=False, num_workers=16)
 

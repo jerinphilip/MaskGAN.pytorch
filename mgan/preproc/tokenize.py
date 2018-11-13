@@ -17,5 +17,6 @@ class SentencePieceTokenizer:
 
     def __call__(self, text):
         tokens = self.sp.EncodeAsPieces(text)
-        return tokens
+        stokens = list(map(lambda x: x.decode("utf-8"), tokens))
+        return stokens
 

@@ -6,7 +6,7 @@ class TCELoss(nn.Module):
         super().__init__()
 
     def forward(self, pred_logits, truths, weight=None):
-        self.criterion = nn.BCEWithLogitsLoss(reduce=False)
+        self.criterion = nn.BCEWithLogitsLoss(reduction='none')
         B, T, H = pred_logits.size()
         # EPS = 1e-7
         # pred_logits += EPS
