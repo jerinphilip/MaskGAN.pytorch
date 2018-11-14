@@ -14,7 +14,8 @@ class MGANTrainer:
         self.model = MGANModel.build_model(args, task)
         self.model = DataParallel(self.model)
         self.model = self.model.to(device)
-        self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
+        # self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
+        self.opt = torch.optim.Adam(self.model.parameters())
         self.dopt = self.opt
         self.gopt = self.opt
 

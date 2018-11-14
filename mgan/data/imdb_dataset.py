@@ -38,7 +38,14 @@ class IMDbSingleDataset(Dataset):
     def __init__(self, path):
         self.path = path
         self.lines = open(self.path).read().splitlines()
-        # self.precompute()
+
+    def filter(self, preprocess):
+        flines = []
+        for line in tqdm(self.lines, desc='filtering'):
+            tokens, mask = preprocess(line)
+            if len(tokens) >= 40:
+                flines.append(line)
+        self.lines = flines
 
     def __len__(self):
         return len(self.lines)
@@ -52,6 +59,7 @@ class TensorIMDbDataset(IMDbSingleDataset):
         self.preprocess = preprocess
         self.truncate = truncate
         self.build_vocab(rebuild=rebuild)
+        self.filter(preprocess)
 
     def build_vocab(self, rebuild=False):
         ## vocab_path = os.path.join(self.path + '.vocab.pt')
@@ -79,7 +87,8 @@ class TensorIMDbDataset(IMDbSingleDataset):
         tokens = tokens[:truncate]
         token_count = len(tokens)
         while len(tokens) < self.truncate:
-            tokens.append(self.vocab.pad())
+            tokens.append(self.vocab.eos_word)
+        assert(len(tokens) == self.truncate)
         return (tokens, token_count)
 
 
@@ -93,6 +102,7 @@ class TensorIMDbDataset(IMDbSingleDataset):
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
         tokens, tmask = self.preprocess(contents, mask=masked)
         tokens, token_count = self._truncate(tokens)
+        # print(tokens, token_count)
         
         idxs = []
         if move_eos_to_beginning:
@@ -112,6 +122,9 @@ class TensorIMDbDataset(IMDbSingleDataset):
 
         return (torch.LongTensor(idxs), token_count, mask)
 
+    def get_collate_fn(self):
+        return TensorIMDbDataset.collate
+
     @staticmethod
     def collate(samples):
         # TODO: Implement Collate
@@ -124,11 +137,13 @@ class TensorIMDbDataset(IMDbSingleDataset):
         src_lengths, sort_order = src_lengths.sort(descending=True)
         tgt_lengths = tgt_lengths.index_select(0, sort_order)
 
+
         srcs = pad_sequence(srcs)
         tgts = pad_sequence(tgts)
 
         srcs = srcs.index_select(1, sort_order)
         tgts = tgts.index_select(1, sort_order)
+
 
         # TODO(jerin): Fix this.
         src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
@@ -139,16 +154,15 @@ class TensorIMDbDataset(IMDbSingleDataset):
         tgt_masks = tgt_masks.index_select(1, sort_order)
         tgt_masks = tgt_masks.permute(1, 0).contiguous()
 
-        # src_masks = None
-        # tgt_masks = None
-
         batch_first = True
 
         if batch_first:
             srcs = srcs.permute(1, 0).contiguous()
             tgts = tgts.permute(1, 0).contiguous()
 
-        # print(srcs.size(), src_lengths, tgts.size(), tgt_lengths)
         return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
+
+
+
 
 

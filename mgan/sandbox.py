@@ -38,10 +38,10 @@ def dataset_test(args):
     }
 
     preprocess = Preprocess(mask, tokenize)
-    dataset = TensorIMDbDataset(args.path, preprocess, truncate=50, rebuild=False)
-    loader = DataLoader(dataset, batch_size=2048, 
-            collate_fn=TensorIMDbDataset.collate, 
-            shuffle=False, num_workers=16)
+    dataset = TensorIMDbDataset(args.path, preprocess, truncate=40, rebuild=False)
+    loader = DataLoader(dataset, batch_size=4096, 
+            collate_fn=dataset.get_collate_fn(), 
+            shuffle=True, num_workers=16)
 
     Task = namedtuple('Task', 'source_dictionary target_dictionary')
     task = Task(source_dictionary=dataset.vocab, 
@@ -83,6 +83,8 @@ def dataset_test(args):
                     'line', summary['Discriminator Real Loss'])
             visdom.log('discriminator-fake-loss-vs-steps', 
                     'line', summary['Discriminator Fake Loss'])
+            visdom.log('discriminator-overall-loss-vs-steps', 
+                    'line', summary['Discriminator Overall Loss'])
             if count % (save_every) == 0:
                 saver.checkpoint_trainer(trainer)
 
