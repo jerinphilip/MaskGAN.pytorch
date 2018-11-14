@@ -14,11 +14,27 @@ class EndMask(Mask):
     
     def forward(self, xs):
         # x is supposed to be a set of tokens
-        mask = torch.zeros(self.n_chars)
-        for i in range(self.n_chars):
+        n_chars = self.n_chars
+        mask = torch.zeros(len(xs))
+        for i in range(n_chars):
             j = i+1
             xs[-j] = self.mask_token
             mask[-j] = 1
+        return (xs, mask)
+
+class ContiguousRandom(Mask):
+    def __init__(self, n_chars):
+        super().__init__()
+        self.n_chars = n_chars
+        self.r = random.Random(42)
+
+    def forward(self, xs):
+        n_chars = self.n_chars
+        mask = torch.zeros(len(xs))
+        start = self.r.randint(0, len(xs)-n_chars-1)
+        for i in range(start, start+n_chars):
+            xs[i] = self.mask_token
+            mask[i] = 1
         return (xs, mask)
 
 

@@ -54,12 +54,11 @@ class IMDbSingleDataset(Dataset):
         return self.lines[idx]
 
 class TensorIMDbDataset(IMDbSingleDataset):
-    def __init__(self, path, preprocess, truncate=40, rebuild=False):
+    def __init__(self, path, preprocess, rebuild=False):
         super().__init__(path)
         self.preprocess = preprocess
-        self.truncate = truncate
         self.build_vocab(rebuild=rebuild)
-        self.filter(preprocess)
+        # self.filter(preprocess)
 
     def build_vocab(self, rebuild=False):
         ## vocab_path = os.path.join(self.path + '.vocab.pt')
@@ -76,20 +75,11 @@ class TensorIMDbDataset(IMDbSingleDataset):
         for i in tqdm(range(len(self)), desc='build-vocab'):
             contents = super().__getitem__(i)
             tokens, mask = self.preprocess(contents, mask=False)
-            tokens, token_count = self._truncate(tokens)
             for token in tokens:
                 self.vocab.add_symbol(token)
 
         self.vocab.save(vocab_path)
 
-    def _truncate(self, tokens):
-        truncate = min(len(tokens), self.truncate)
-        tokens = tokens[:truncate]
-        token_count = len(tokens)
-        while len(tokens) < self.truncate:
-            tokens.append(self.vocab.eos_word)
-        assert(len(tokens) == self.truncate)
-        return (tokens, token_count)
 
 
     def __getitem__(self, idx):
@@ -101,10 +91,12 @@ class TensorIMDbDataset(IMDbSingleDataset):
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
         tokens, tmask = self.preprocess(contents, mask=masked)
-        tokens, token_count = self._truncate(tokens)
+        #tokens, token_count = self._truncate(tokens)
         # print(tokens, token_count)
+        token_count = len(tokens)
         
         idxs = []
+        # print(tmask.size(), token_count)
         if move_eos_to_beginning:
             mask = torch.zeros(len(tokens)+2+1)
             idxs.append(self.vocab.eos())
@@ -161,8 +153,3 @@ class TensorIMDbDataset(IMDbSingleDataset):
             tgts = tgts.permute(1, 0).contiguous()
 
         return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
-
-
-
-
-

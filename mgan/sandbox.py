@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from fairseq.meters import AverageMeter
 from fairseq.progress_bar import tqdm_progress_bar
 
-from mgan.preproc import Preprocess
+from mgan.preproc import Preprocess, mask, tokenize
 from mgan.data import IMDbDataset, TensorIMDbDataset
 # from mgan.models import MaskGAN
 # from mgan.models import train, pretrain
@@ -27,18 +27,30 @@ class Args:
     criterion = 'dummy'
 
 def dataset_test(args):
-    mask = {
-        "type": "random",
-        "kwargs": {"probability": 0.15}
-    }
+    # mask = {
+    #     "type": "random",
+    #     "kwargs": {"probability": 0.15}
+    # }
 
-    tokenize = {
-        "type": "spm",
-        "kwargs": {"model_path": args.spm_path}
-    }
+    # mask = {
+    #     "type": "end",
+    #     "kwargs": {"n_chars": 2},
+    # }
 
-    preprocess = Preprocess(mask, tokenize)
-    dataset = TensorIMDbDataset(args.path, preprocess, truncate=40, rebuild=False)
+    # mask =  {
+    #     "type": "contiguous_random",
+    #     "kwargs": {"n_chars": 2},
+    # }
+
+    crmask = mask.ContiguousRandom(n_chars=2)
+    spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
+    max_tokens = 32000
+    truncate = 10
+    batch_size = max_tokens/truncate
+
+
+    preprocess = Preprocess(mask=crmask, tokenize=spm_tokenize, truncate=truncate)
+    dataset = TensorIMDbDataset(args.path, preprocess, rebuild=False)
     loader = DataLoader(dataset, batch_size=4096, 
             collate_fn=dataset.get_collate_fn(), 
             shuffle=True, num_workers=16)
