@@ -10,14 +10,12 @@ class TCELoss(nn.Module):
         B, T, H = pred_logits.size()
         truths = truths.float()
         weight = weight.float()
-        # EPS = 1e-7
-        # pred_logits += EPS
-        # truths += EPS 
-        # print(pred_logits.size(),  truths.size(),  weight.size())
-        _debug(pred_logits, truths, weight)
+        # _debug(pred_logits, truths, weight)
         loss = self.criterion(pred_logits, truths)
-        #return loss.sum()
-        return (loss * weight).mean()
+        # return loss.sum()
+        missing = weight.sum().item()
+        assert (missing != 0)
+        return ((loss * weight).sum()/missing)
 
 
 

@@ -18,7 +18,7 @@ class Saver:
         checkpoint_path = self.get_path(tag)
         with open(checkpoint_path, "wb+") as fp:
             _payload = payload.state_dict()
-            torch.save(payload, fp)
+            torch.save(_payload, fp)
 
         if is_best:
             best_path = '{prefix}.best'.format(prefix=checkpoint_path)
@@ -33,12 +33,11 @@ class Saver:
         checkpoint_path = self.get_path(tag)
         if is_best: checkpoint_path = '{prefix}.best'.format(prefix=checkpoint_path)
 
-        try:
+        if os.path.exists(checkpoint_path):
             payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
             dest.load_state_dict(payload)
-        except Exception as e:
+        else:
             warn("Error: No Weights loaded.".format(path=checkpoint_path))
-            print(e)
 
     def load_trainer(self, trainer, is_best=False):
         for tag, savable in trainer.savable:

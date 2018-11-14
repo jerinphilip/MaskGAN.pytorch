@@ -11,8 +11,8 @@ import torch
 class MGANTrainer:
     def __init__(self, args, task):
         device = torch.device("cuda")
-        self.model = MGANModel.build_model(args, task)
-        self.model = DataParallel(self.model)
+        self._model = MGANModel.build_model(args, task)
+        self.model = DataParallel(self._model)
         self.model = self.model.to(device)
         # self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
         self.opt = torch.optim.Adam(self.model.parameters())
@@ -20,7 +20,7 @@ class MGANTrainer:
         self.gopt = self.opt
 
         self.savable = [
-             # ["mgan-model", self.model.module]
+             ["mgan-model", self.model.module]
         ]
 
 
@@ -45,10 +45,9 @@ class MGANTrainer:
         for step in range(d_steps):
             self.dopt.zero_grad()
             _d_real_loss = torch.Tensor([0])
-            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], src_lengths, src_mask,
+            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], src_lengths, tgt_mask,
                             prev_output_tokens, tag="d-step", real=True)
 
-            #print(_d_real_loss)
 
             _d_real_loss = _d_real_loss.mean()
             # _d_real_loss.backward()
@@ -60,11 +59,19 @@ class MGANTrainer:
                                 prev_output_tokens, tag="g-step")
             # print(_gloss)
 
-            _d_fake_loss, _  = self.model(samples, src_lengths, src_mask,
+            if step == 0 and False:
+                print("Samples", samples[0, :])
+                print("SRCS", src_tokens[0, :])
+                print("Targets", prev_output_tokens[0, 1:])
+
+            _d_fake_loss, _  = self.model(src_tokens, src_lengths, tgt_mask,
                              prev_output_tokens, tag="d-step", real=False)
+            # _d_fake_loss, _  = self.model(samples, src_lengths, src_mask,
+            #                  prev_output_tokens, tag="d-step", real=False)
             # print(_d_fake_loss)
 
             _d_fake_loss = _d_fake_loss.mean()
+            # _d_real_loss = _d_fake_loss
             # _d_fake_loss.backward()
 
             loss = (_d_real_loss + _d_fake_loss )/2

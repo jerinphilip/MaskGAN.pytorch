@@ -53,15 +53,12 @@ class MGANModel(nn.Module):
         return (loss, samples)
 
     def _dstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens, real=True):
-        logits, attn_scores = self.discriminator.model(
-                prev_output_tokens[:, 1:], 
-                src_lengths, 
-                prev_output_tokens)
-
+        logits, attn_scores = self.discriminator.model(src_tokens, src_lengths, prev_output_tokens)
         src_mask = src_mask.unsqueeze(2)
-        truths = torch.ones_like(logits) if real else torch.ones_like(logits) - src_mask
+        truths = torch.ones_like(logits) if real else torch.ones_like(logits) - src_mask[:, :-1]
+        # weight = src_mask if real else src_mask[:, :-1]
 
-        loss = self.discriminator.criterion(logits, truths, weight=src_mask)
+        loss = self.discriminator.criterion(logits, truths, weight=src_mask[:, :-1])
         return (loss, None)
 
 

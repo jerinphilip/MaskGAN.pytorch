@@ -87,6 +87,7 @@ class TensorIMDbDataset(IMDbSingleDataset):
         tgt, tgt_length, tgt_mask = self.Tensor_idxs(contents, masked=False, move_eos_to_beginning=True)
         src, src_length, src_mask  = self.Tensor_idxs(contents, masked=True)
         #assert(tgt_length == src_length)
+        tgt_mask[1:] = src_mask
         return (src, src_length, src_mask, tgt, tgt_length, tgt_mask)
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
