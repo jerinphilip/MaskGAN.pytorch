@@ -27,28 +27,15 @@ class Args:
     criterion = 'dummy'
 
 def dataset_test(args):
-    # mask = {
-    #     "type": "random",
-    #     "kwargs": {"probability": 0.15}
-    # }
-
-    # mask = {
-    #     "type": "end",
-    #     "kwargs": {"n_chars": 2},
-    # }
-
-    # mask =  {
-    #     "type": "contiguous_random",
-    #     "kwargs": {"n_chars": 2},
-    # }
-
     crmask = mask.ContiguousRandom(n_chars=2)
     rmask = mask.StochasticMask(probability=0.25)
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
+
+    # Compute Batch Size
     max_tokens_per_device = 8000
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate = 10
+    truncate = 20
     batch_size = int(max_tokens/truncate)
 
 
@@ -96,15 +83,14 @@ def dataset_test(args):
                     'line', summary['Discriminator Fake Loss'])
             visdom.log('discriminator-overall-loss-vs-steps', 
                     'line', summary['Discriminator Overall Loss'])
-            if count % (save_every) == 0:
-                saver.checkpoint_trainer(trainer)
+            # if count % (save_every) == 0:
+            #     saver.checkpoint_trainer(trainer)
 
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
         visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
-        saver.checkpoint_trainer(trainer)
+        # saver.checkpoint_trainer(trainer)
         debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
-        break
 
 if __name__ == '__main__':
     parser = ArgumentParser()
