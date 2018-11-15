@@ -92,12 +92,9 @@ class TensorIMDbDataset(IMDbSingleDataset):
     
     def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
         tokens, tmask = self.preprocess(contents, mask=masked)
-        #tokens, token_count = self._truncate(tokens)
-        # print(tokens, token_count)
         token_count = len(tokens)
         
         idxs = []
-        # print(tmask.size(), token_count)
         if move_eos_to_beginning:
             mask = torch.zeros(len(tokens)+2+1)
             idxs.append(self.vocab.eos())
@@ -124,33 +121,23 @@ class TensorIMDbDataset(IMDbSingleDataset):
         srcs, src_lengths, src_masks, \
                 tgts, tgt_lengths, tgt_masks = list(zip(*samples))
 
+        # Convert lengths to Tensors
         src_lengths = torch.LongTensor(src_lengths)
-        tgt_lengths = torch.LongTensor(tgt_lengths)
 
+        # Sort for RNN PackedPaddedSequence
         src_lengths, sort_order = src_lengths.sort(descending=True)
+        tgt_lengths = torch.LongTensor(tgt_lengths)
         tgt_lengths = tgt_lengths.index_select(0, sort_order)
 
+        # Common sort based processing + Padding
+        def process(seqs, seq_masks, sort_order):
+            seqs = pad_sequence(seqs, batch_first=True)
+            seqs = seqs.index_select(0, sort_order)
+            seq_masks = torch.stack(seq_masks, dim=0).index_select(0, sort_order)
+            return (seqs, seq_masks)
 
-        srcs = pad_sequence(srcs)
-        tgts = pad_sequence(tgts)
-
-        srcs = srcs.index_select(1, sort_order)
-        tgts = tgts.index_select(1, sort_order)
-
-
-        # TODO(jerin): Fix this.
-        src_masks = torch.stack(src_masks).permute(1, 0).contiguous()
-        src_masks = src_masks.index_select(1, sort_order)
-        src_masks = src_masks.permute(1, 0).contiguous()
-
-        tgt_masks = torch.stack(tgt_masks).permute(1, 0).contiguous()
-        tgt_masks = tgt_masks.index_select(1, sort_order)
-        tgt_masks = tgt_masks.permute(1, 0).contiguous()
-
-        batch_first = True
-
-        if batch_first:
-            srcs = srcs.permute(1, 0).contiguous()
-            tgts = tgts.permute(1, 0).contiguous()
+        # Apply process to srcs and tgts and respective masks
+        srcs, src_masks = process(srcs, src_masks, sort_order)
+        tgts, tgt_masks = process(tgts, tgt_masks, sort_order)
 
         return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
