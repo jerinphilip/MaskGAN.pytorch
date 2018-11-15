@@ -35,8 +35,8 @@ class MGANModel(nn.Module):
         reinforce = REINFORCE(gamma=0.6, clip_value=1)
         gcriterion = reinforce
 
-        generator = MLEGenerator.build_model(args,task)
-        gcriterion = TCELoss()
+        # generator = MLEGenerator.build_model(args,task)
+        # gcriterion = TCELoss()
         gloss = LossModel(generator, gcriterion)
 
         # Build discriminator
@@ -48,8 +48,8 @@ class MGANModel(nn.Module):
 
     def forward(self, *args, **kwargs):
         if kwargs['tag'] == 'g-step':
-            # return self._gstep(*args)
-            return self._gstep_pretrain(*args)
+            return self._gstep(*args)
+            # return self._gstep_pretrain(*args)
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):

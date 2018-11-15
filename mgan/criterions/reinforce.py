@@ -36,7 +36,7 @@ class REINFORCE(nn.Module):
         advantages = cumulative_rewards - baselines
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
         missing = weight.sum()
-        reward = cumulative_rewards.sum()/ missing
+        reward = advantages.sum()/ missing
         return (reward, cumulative_rewards)
 
 

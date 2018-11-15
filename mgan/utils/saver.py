@@ -36,7 +36,7 @@ class Saver:
         if os.path.exists(checkpoint_path):
             payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
             _payload = dest.state_dict()
-            _payload.update(_payload)
+            _payload.update(payload)
             dest.load_state_dict(_payload)
         else:
             warn("Error: No Weights loaded.".format(path=checkpoint_path))

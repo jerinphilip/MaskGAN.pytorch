@@ -28,7 +28,7 @@ class Args:
 
 def dataset_test(args):
     crmask = mask.ContiguousRandom(n_chars=2)
-    rmask = mask.StochasticMask(probability=0.25)
+    rmask = mask.StochasticMask(probability=0.15)
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
 
     # Compute Batch Size
@@ -39,7 +39,7 @@ def dataset_test(args):
     batch_size = int(max_tokens/truncate)
 
 
-    preprocess = Preprocess(mask=rmask, tokenize=spm_tokenize, truncate=truncate)
+    preprocess = Preprocess(mask=crmask, tokenize=spm_tokenize, truncate=truncate)
     dataset = TensorIMDbDataset(args.path, preprocess, rebuild=False)
     loader = DataLoader(dataset, batch_size=batch_size, 
             collate_fn=dataset.get_collate_fn(), 

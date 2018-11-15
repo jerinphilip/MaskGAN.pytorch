@@ -97,13 +97,13 @@ class MGANTrainer:
 
             _gloss = _gloss.mean()
             _gloss.backward()
+            gloss += _gloss.item()
 
             _closs = _closs.mean()
             _closs.backward()
+            closs += _closs.item()
 
             self.gopt.step()
-            gloss += _gloss.item()
-            closs += _closs.item()
 
 
         return {
