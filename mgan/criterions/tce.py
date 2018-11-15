@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 
-class TCELoss(nn.Module):
+class TBCELoss(nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -17,6 +17,18 @@ class TCELoss(nn.Module):
         assert (missing != 0)
         return ((loss * weight).sum()/missing)
 
+class TCELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, logits, truths, weight=None):
+        logits = logits[:, :-1, :].contiguous()
+        B, T, H = logits.size()
+        logits = logits.view(T*B, H)
+        target = truths[:, 1:].contiguous().view(-1)
+        loss = self.criterion(logits, target)
+        return loss
 
 
 def _debug(pred_logits, truths, weight):

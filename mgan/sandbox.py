@@ -43,12 +43,12 @@ def dataset_test(args):
     # }
 
     crmask = mask.ContiguousRandom(n_chars=2)
-    rmask = mask.StochasticMask(probability=0.5)
+    rmask = mask.StochasticMask(probability=0.25)
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
     max_tokens_per_device = 8000
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate = 40
+    truncate = 10
     batch_size = int(max_tokens/truncate)
 
 
@@ -87,11 +87,7 @@ def dataset_test(args):
         count = 0
         for src, src_lens, src_mask, tgt, tgt_lens, tgt_mask in pbar:
             count += 1
-            # src, tgt = src.to(device), tgt.to(device)
-            # src_mask, tgt_mask = src_mask.to(device), tgt_mask.to(device)
-            # src_lens, tgt_lens = src_lens.to(device), tgt_lens.to(device)
             summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
-            # visdom.log('generator-loss-vs-steps', 'line', summary['Generator Loss'])
             visdom.log('generator-loss-vs-steps', 
                     'line', summary['Generator Loss'])
             visdom.log('discriminator-real-loss-vs-steps', 
@@ -103,12 +99,12 @@ def dataset_test(args):
             if count % (save_every) == 0:
                 saver.checkpoint_trainer(trainer)
 
-
         avg_loss = meters["loss"].avg
         meters['epoch'].update(avg_loss)
         visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
         saver.checkpoint_trainer(trainer)
-        #debug_generate(trainer.generator.model.model, loader, dataset.vocab, visdom)
+        debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
+        break
 
 if __name__ == '__main__':
     parser = ArgumentParser()

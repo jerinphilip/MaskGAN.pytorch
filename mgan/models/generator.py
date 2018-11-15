@@ -46,5 +46,7 @@ class MGANGenerator(LSTMModel):
         return (samples, log_probs, attns)
 
 class MLEGenerator(LSTMModel):
-    pass
+    def forward(self, src_tokens, src_lengths, prev_output_tokens):
+        self.encoder.lstm.flatten_parameters()
+        return super().forward(src_tokens, src_lengths, prev_output_tokens)
 
