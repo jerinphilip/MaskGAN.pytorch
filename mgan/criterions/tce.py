@@ -30,6 +30,15 @@ class TCELoss(nn.Module):
         loss = self.criterion(logits, target)
         return loss
 
+class WeightedMSELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.criterion = nn.MSELoss(reduction='none')
+
+    def forward(self, preds, truths, weights):
+        mse_loss = self.criterion(preds, truths)
+        return weights*mse_loss
+
 
 def _debug(pred_logits, truths, weight):
     B, T, H = pred_logits.size()

@@ -77,6 +77,8 @@ def dataset_test(args):
             summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
             visdom.log('generator-loss-vs-steps', 
                     'line', summary['Generator Loss'])
+            visdom.log('critic-loss-vs-steps', 
+                    'line', summary['Critic Loss'])
             visdom.log('discriminator-real-loss-vs-steps', 
                     'line', summary['Discriminator Real Loss'])
             visdom.log('discriminator-fake-loss-vs-steps', 

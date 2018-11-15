@@ -5,8 +5,9 @@ import torch
 # https://github.com/tensorflow/models/blob/master/research/maskgan/model_utils/model_losses.py
 
 class REINFORCE(nn.Module):
-    def __init__(self, gamma):
+    def __init__(self, gamma, clip_value):
         self.gamma = gamma
+        self.clip_value = clip_value
         super().__init__()
 
     def forward(self, log_probs, logits, weight, baselines=None):
@@ -16,11 +17,10 @@ class REINFORCE(nn.Module):
         rewards = torch.log(probs + EPS)
 
         rewards = rewards.squeeze(2)
-        logits = logits.squeeze(2)
+        baselines = baselines.squeeze(2)
         # print(rewards.size(), logits.size(), weight.size())
 
         rewards = rewards * weight
-        logits = logits * weight
 
         cumulative_rewards = []
         for t in range(seqlen):
@@ -32,8 +32,11 @@ class REINFORCE(nn.Module):
             cumulative_rewards.append(cum_value)
 
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
+        # print(cumulative_rewards.size(), baselines.size())
+        advantages = cumulative_rewards - baselines
+        advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
         missing = weight.sum()
         reward = cumulative_rewards.sum()/ missing
-        return reward
+        return (reward, cumulative_rewards)
 
 

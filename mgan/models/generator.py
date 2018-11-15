@@ -42,7 +42,7 @@ class MGANGenerator(LSTMModel):
         samples = torch.stack(samples, dim=1)
         log_probs = torch.stack(log_probs, dim=1)
         # I may need to strip off an extra token generated.
-        # Nope, I may not need to.
+        # Nope, I may not need to. Yes, I may need to, at the end though.
         samples = samples[:, :-1]
         return (samples, log_probs, attns)
 

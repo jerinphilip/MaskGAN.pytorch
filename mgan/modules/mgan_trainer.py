@@ -51,7 +51,7 @@ class MGANTrainer:
             _d_real_loss = _d_real_loss.mean()
 
             with torch.no_grad():
-                _gloss, samples = self.model(src_tokens, src_lengths, src_mask,
+                _gloss, samples, _closs = self.model(src_tokens, src_lengths, src_mask,
                                 prev_output_tokens, tag="g-step")
 
             if step == 0:
@@ -88,19 +88,27 @@ class MGANTrainer:
 
         prev_output_tokens = tgt_tokens
         gloss = 0
+        closs = 0
 
         for step in range(g_steps):
             self.gopt.zero_grad()
-            _gloss, samples = self.model(src_tokens, src_lengths, src_mask,
+            _gloss, samples, _closs = self.model(src_tokens, src_lengths, src_mask,
                     prev_output_tokens, tag="g-step")
+
             _gloss = _gloss.mean()
             _gloss.backward()
+
+            _closs = _closs.mean()
+            _closs.backward()
+
             self.gopt.step()
             gloss += _gloss.item()
+            closs += _closs.item()
 
 
         return {
-                "Generator Loss": gloss/g_steps
+                "Generator Loss": gloss/g_steps,
+                "Critic Loss": closs/g_steps
         }
 
 

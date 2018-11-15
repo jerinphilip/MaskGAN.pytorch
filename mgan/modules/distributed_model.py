@@ -1,11 +1,13 @@
 import torch
 from torch import nn
-from mgan.criterions import TCELoss, REINFORCE, TBCELoss
-from mgan.models import MLEGenerator, MLEGenerator, \
-        MGANDiscriminator, MGANGenerator
+from mgan.criterions import TCELoss, REINFORCE, TBCELoss, WeightedMSELoss
+from mgan.models import \
+        MLEGenerator, \
+        MGANDiscriminator, \
+        MGANGenerator, \
+        MGANCritic
 
 from collections import namedtuple
-
 
 class LossModel(nn.Module):
     def __init__(self, model, criterion):
@@ -15,34 +17,39 @@ class LossModel(nn.Module):
 
 
 class MGANModel(nn.Module):
-    def __init__(self, generator, discriminator):
+    def __init__(self, generator, discriminator, critic=None):
         super().__init__()
         self.generator = generator
         self.discriminator = discriminator
+        self.critic = critic
 
     @classmethod
     def build_model(cls, args, task):
+        # Build critic
+        critic = MGANCritic.build_model(args, task)
+        mse_loss = WeightedMSELoss()
+        closs = LossModel(critic, mse_loss)
+
         # Build generator
         generator = MGANGenerator.build_model(args, task)
-        reinforce = REINFORCE(gamma=0.6)
+        reinforce = REINFORCE(gamma=0.6, clip_value=1)
         gcriterion = reinforce
 
-        # generator = MLEGenerator.build_model(args,task)
-        # gcriterion = TCELoss()
+        generator = MLEGenerator.build_model(args,task)
+        gcriterion = TCELoss()
         gloss = LossModel(generator, gcriterion)
 
         # Build discriminator
         discriminator = MGANDiscriminator.build_model(args, task)
-        #bceloss = torch.nn.BCEWithLogitsLoss()
         tceloss = TBCELoss()
         dloss = LossModel(discriminator, tceloss)
 
-        return cls(gloss, dloss)
+        return cls(gloss, dloss, closs)
 
     def forward(self, *args, **kwargs):
         if kwargs['tag'] == 'g-step':
-            return self._gstep(*args)
-            # return self._gstep_pretrain(*args)
+            # return self._gstep(*args)
+            return self._gstep_pretrain(*args)
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
@@ -53,16 +60,20 @@ class MGANModel(nn.Module):
             logits, attn_scores = self.discriminator.model(samples, 
                     src_lengths, prev_output_tokens)
 
-        reward = self.generator.criterion(log_probs, logits, src_mask)
-        loss = -1*reward
-        return (loss, samples)
+        baselines, _ = self.critic.model(samples, src_lengths, prev_output_tokens)
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, src_mask, baselines.detach())
+
+        gloss = -1*reward
+        critic_loss = self.critic.criterion(baselines.squeeze(2), cumulative_rewards.detach(), src_mask)
+
+        return (gloss, samples, critic_loss)
 
     def _gstep_pretrain(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
         logits, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
         loss = self.generator.criterion(logits, prev_output_tokens)
-        return (loss, None)
+        return (loss, None, None)
 
     def _dstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens, real=True):
         logits, attn_scores = self.discriminator.model(src_tokens, src_lengths, prev_output_tokens)
