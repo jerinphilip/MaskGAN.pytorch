@@ -6,9 +6,9 @@ import torch
 
 class REINFORCE(nn.Module):
     def __init__(self, gamma, clip_value):
+        super().__init__()
         self.gamma = gamma
         self.clip_value = clip_value
-        super().__init__()
 
     def forward(self, log_probs, logits, weight, baselines=None):
         EPS = 1e-7

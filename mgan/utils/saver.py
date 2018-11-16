@@ -37,6 +37,8 @@ class Saver:
             payload = torch.load(checkpoint_path, map_location=torch.device("cpu"))
             _payload = dest.state_dict()
             _payload.update(payload)
+            # print(payload.keys())
+            # del payload["discriminator"]
             dest.load_state_dict(_payload)
         else:
             warn("Error: No Weights loaded.".format(path=checkpoint_path))

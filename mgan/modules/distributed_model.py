@@ -17,26 +17,29 @@ class LossModel(nn.Module):
 
 
 class MGANModel(nn.Module):
-    def __init__(self, generator, discriminator, critic=None):
+    def __init__(self, generator, discriminator, critic=None, pretrain=False):
         super().__init__()
         self.generator = generator
         self.discriminator = discriminator
         self.critic = critic
+        self.pretrain = pretrain
 
     @classmethod
-    def build_model(cls, args, task):
+    def build_model(cls, args, task, pretrain):
         # Build critic
         critic = MGANCritic.build_model(args, task)
         mse_loss = WeightedMSELoss()
         closs = LossModel(critic, mse_loss)
 
         # Build generator
-        generator = MGANGenerator.build_model(args, task)
-        reinforce = REINFORCE(gamma=0.6, clip_value=1)
-        gcriterion = reinforce
+        if pretrain:
+            generator = MLEGenerator.build_model(args,task)
+            gcriterion = TCELoss()
+        else:
+            generator = MGANGenerator.build_model(args, task)
+            reinforce = REINFORCE(gamma=0.6, clip_value=1)
+            gcriterion = reinforce
 
-        # generator = MLEGenerator.build_model(args,task)
-        # gcriterion = TCELoss()
         gloss = LossModel(generator, gcriterion)
 
         # Build discriminator
@@ -44,12 +47,14 @@ class MGANModel(nn.Module):
         tceloss = TBCELoss()
         dloss = LossModel(discriminator, tceloss)
 
-        return cls(gloss, dloss, closs)
+        return cls(gloss, dloss, closs, pretrain=pretrain)
 
     def forward(self, *args, **kwargs):
         if kwargs['tag'] == 'g-step':
-            return self._gstep(*args)
-            # return self._gstep_pretrain(*args)
+            if self.pretrain:
+                return self._gstep_pretrain(*args)
+            else:
+                return self._gstep(*args)
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
