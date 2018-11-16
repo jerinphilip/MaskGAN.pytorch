@@ -33,7 +33,7 @@ class REINFORCE(nn.Module):
 
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
         # print(cumulative_rewards.size(), baselines.size())
-        advantages = cumulative_rewards - baselines
+        advantages = weight*(cumulative_rewards - baselines)
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
         missing = weight.sum()
         reward = advantages.sum()/ missing
