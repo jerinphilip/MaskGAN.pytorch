@@ -19,7 +19,7 @@ from mgan.data import IMDbDataset, TensorIMDbDataset
 from mgan.modules import MGANTrainer
 from mgan.utils import Saver
 from mgan.utils.debug_generate import debug_generate
-from mgan.report_hooks import visdom
+from mgan.utils.logging import visdom
 
 class Args: 
     criterion = 'dummy'
@@ -58,42 +58,17 @@ def dataset_test(args):
 
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
-    trainer = MGANTrainer(args, task)
-    saver.load_trainer(trainer)
-    save_every = 20
-
+    trainer = MGANTrainer(args, task, saver, visdom)
     from mgan.utils.leaks import leak_check
 
-
-    @leak_check
     def run_epoch(epoch, loader, trainer, visdom):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
-        count = 0
         for samples in pbar:
-            count += 1
-            summary = trainer.run(epoch, samples)
-            # log(summary)
-            visdom.log('generator-loss-vs-steps', 
-                    'line', summary['Generator Loss'])
-            visdom.log('critic-loss-vs-steps', 
-                    'line', summary['Critic Loss'])
-            visdom.log('discriminator-real-loss-vs-steps', 
-                    'line', summary['Discriminator Real Loss'])
-            visdom.log('discriminator-fake-loss-vs-steps', 
-                    'line', summary['Discriminator Fake Loss'])
-            visdom.log('discriminator-overall-loss-vs-steps', 
-                    'line', summary['Discriminator Overall Loss'])
-            # if count % (save_every) == 0:
-            #     saver.checkpoint_trainer(trainer)
+            trainer.run(epoch, samples)
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
-        run_epoch(epoch, [next(iter(loader))], trainer, visdom)
+        run_epoch(epoch, loader, trainer, visdom)
 
-        # new_loader = [next(iter(loader))]
-
-        # visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
-        # saver.checkpoint_trainer(trainer)
-        # debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
 
 if __name__ == '__main__':
     parser = ArgumentParser()

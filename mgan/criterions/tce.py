@@ -45,8 +45,21 @@ def _debug(pred_logits, truths, weight):
     # pred_logits = pred_logits.view(-1, H)
     # truths = truths.view(-1)
     for b in range(B):
-        print("preds", torch.sigmoid(pred_logits[b, :, :].view(-1)))
-        print("truths", truths[b, :, :].view(-1))
-        # print("weight", weight[b, :].view(-1))
-        # print("Weighted:", nn.BCEWithLogitsLoss(reduce=False)(pred_logits, truths) * weight)
+        npreds = pred_logits[b, :, :].view(-1)
+        ntruths = truths[b, :, :].view(-1)
+        nweights = weight[b, :].view(-1)
+        weighted = nn.BCEWithLogitsLoss(reduction='none')(npreds, ntruths) * nweights
+        outstr = """
+sizes: {} {} {}
+predns:  {}
+truths:  {}
+weights: {}
+final:   {}
+        """.format(npreds.size(), ntruths.size(), nweights.size(),
+                torch.sigmoid(npreds).tolist(),
+                ntruths.tolist(),
+                nweights.tolist(),
+                weighted.tolist()
+        )
+        print(outstr, flush=True)
         break

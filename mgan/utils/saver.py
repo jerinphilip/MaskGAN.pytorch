@@ -10,11 +10,7 @@ class Saver:
             os.makedirs(self.path)
             warn("{path} doesn't exist. Creating.".format(path=path))
 
-    def checkpoint_trainer(self, trainer, is_best=False):
-        for tag, savable in trainer.savable:
-            self.checkpoint(savable, tag, is_best)
-
-    def checkpoint(self, payload, tag, is_best=False):
+    def checkpoint(self, tag, payload, is_best=False):
         checkpoint_path = self.get_path(tag)
         with open(checkpoint_path, "wb+") as fp:
             _payload = payload.state_dict()
@@ -29,7 +25,7 @@ class Saver:
         checkpoint_path = os.path.join(self.path, fname)
         return checkpoint_path
 
-    def load(self, dest, tag, is_best=False):
+    def load(self, tag, dest, is_best=False):
         checkpoint_path = self.get_path(tag)
         if is_best: checkpoint_path = '{prefix}.best'.format(prefix=checkpoint_path)
 
@@ -43,6 +39,3 @@ class Saver:
         else:
             warn("Error: No Weights loaded.".format(path=checkpoint_path))
 
-    def load_trainer(self, trainer, is_best=False):
-        for tag, savable in trainer.savable:
-            self.load(savable, tag, is_best)

@@ -87,8 +87,19 @@ class MGANModel(nn.Module):
         logits, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
+        def greedy_sample(logits):
+            batch_size, seq_len, _ = logits.size()
+            sampled = []
+            for t in range(seq_len):
+                dt = logits[:, t, :]
+                max_values, max_indices = dt.max(dim=1)
+                sampled.append(max_indices)
+            sampled = torch.stack(sampled, dim=1)
+            return sampled[:, :-1]
+
+        samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, prev_output_tokens)
-        return (loss, None, None)
+        return (loss, samples, None)
 
     def _dstep(self, src_tokens, src_lengths, 
             src_mask, prev_output_tokens, real=True):
