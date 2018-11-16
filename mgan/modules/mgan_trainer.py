@@ -36,8 +36,9 @@ class MGANTrainer:
         summary.update(generator_summary)
         return summary
 
-    def run_dsteps(self, d_steps, src_tokens, src_lengths, src_mask, 
-            tgt_tokens, tgt_lengths, tgt_mask):
+    def run_dsteps(self, d_steps, samples):
+        src_tokens, src_lengths, src_mask, \
+            tgt_tokens, tgt_lengths, tgt_mask = samples
 
         prev_output_tokens = tgt_tokens
         d_real_loss, d_fake_loss = 0, 0,
@@ -83,8 +84,9 @@ class MGANTrainer:
                 "Discriminator Overall Loss": (d_fake_loss+d_real_loss)/(2*d_steps)
         }
 
-    def run_gsteps(self, g_steps, src_tokens, src_lengths, src_mask, 
-            tgt_tokens, tgt_lengths, tgt_mask):
+    def run_gsteps(self, g_steps, samples):
+        src_tokens, src_lengths, src_mask, \
+            tgt_tokens, tgt_lengths, tgt_mask = samples
 
         prev_output_tokens = tgt_tokens
         gloss = 0

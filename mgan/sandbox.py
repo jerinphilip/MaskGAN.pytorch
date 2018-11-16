@@ -16,8 +16,6 @@ from fairseq.progress_bar import tqdm_progress_bar
 
 from mgan.preproc import Preprocess, mask, tokenize
 from mgan.data import IMDbDataset, TensorIMDbDataset
-# from mgan.models import MaskGAN
-# from mgan.models import train, pretrain
 from mgan.modules import build_trainer
 from mgan.utils import Saver
 from mgan.utils.debug_generate import debug_generate
@@ -72,9 +70,9 @@ def dataset_test(args):
         pbar = tqdm_progress_bar(new_loader, epoch=epoch)
         meters["loss"].reset()
         count = 0
-        for src, src_lens, src_mask, tgt, tgt_lens, tgt_mask in pbar:
+        for samples in pbar:
             count += 1
-            summary = trainer.run(src, src_lens, src_mask, tgt, tgt_lens, tgt_mask)
+            summary = trainer.run(samples)
             visdom.log('generator-loss-vs-steps', 
                     'line', summary['Generator Loss'])
             visdom.log('critic-loss-vs-steps', 
@@ -92,7 +90,7 @@ def dataset_test(args):
         meters['epoch'].update(avg_loss)
         visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
         # saver.checkpoint_trainer(trainer)
-        debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
+        # debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
 
 if __name__ == '__main__':
     parser = ArgumentParser()

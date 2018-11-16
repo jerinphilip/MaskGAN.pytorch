@@ -61,25 +61,30 @@ class MGANModel(nn.Module):
                     src_lengths, prev_output_tokens)
 
         baselines, _ = self.critic.model(samples, src_lengths, prev_output_tokens)
-        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, src_mask, baselines.detach())
+        reward, cumulative_rewards = self.generator.criterion(log_probs, 
+                logits, src_mask, baselines.detach())
 
         gloss = -1*reward
-        critic_loss = self.critic.criterion(baselines.squeeze(2), cumulative_rewards.detach(), src_mask)
+        critic_loss = self.critic.criterion(baselines.squeeze(2), 
+                cumulative_rewards.detach(), src_mask)
 
         return (gloss, samples, critic_loss)
 
-    def _gstep_pretrain(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
+    def _gstep_pretrain(self, src_tokens, src_lengths, 
+            src_mask, prev_output_tokens):
         logits, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
         loss = self.generator.criterion(logits, prev_output_tokens)
         return (loss, None, None)
 
-    def _dstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens, real=True):
-        logits, attn_scores = self.discriminator.model(src_tokens, src_lengths, prev_output_tokens)
+    def _dstep(self, src_tokens, src_lengths, 
+            src_mask, prev_output_tokens, real=True):
+        logits, attn_scores = self.discriminator.model(src_tokens, 
+                src_lengths, prev_output_tokens)
         src_mask = src_mask.unsqueeze(2)
-        truths = torch.ones_like(logits) if real else torch.ones_like(logits) - src_mask[:, :-1]
-        # weight = src_mask if real else src_mask[:, :-1]
+        truths = torch.ones_like(logits) if real \
+                else torch.ones_like(logits) - src_mask[:, :-1]
 
         loss = self.discriminator.criterion(logits, truths, weight=src_mask[:, :-1])
         return (loss, None)
