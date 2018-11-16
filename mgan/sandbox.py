@@ -16,7 +16,7 @@ from fairseq.progress_bar import tqdm_progress_bar
 
 from mgan.preproc import Preprocess, mask, tokenize
 from mgan.data import IMDbDataset, TensorIMDbDataset
-from mgan.modules import build_trainer
+from mgan.modules import MGANTrainer
 from mgan.utils import Saver
 from mgan.utils.debug_generate import debug_generate
 from mgan.report_hooks import visdom
@@ -58,21 +58,21 @@ def dataset_test(args):
 
     checkpoint_path = "/scratch/jerin/mgan/"
     saver = Saver(checkpoint_path)
-    trainer = build_trainer("MLE", args, task)
-    trainer = build_trainer("MGAN", args, task)
-
+    trainer = MGANTrainer(args, task)
     saver.load_trainer(trainer)
     save_every = 20
 
-    for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
-        # new_loader = [next(iter(loader))]
-        new_loader = loader
-        pbar = tqdm_progress_bar(new_loader, epoch=epoch)
-        meters["loss"].reset()
+    from mgan.utils.leaks import leak_check
+
+
+    @leak_check
+    def run_epoch(epoch, loader, trainer, visdom):
+        pbar = tqdm_progress_bar(loader, epoch=epoch)
         count = 0
         for samples in pbar:
             count += 1
-            summary = trainer.run(samples)
+            summary = trainer.run(epoch, samples)
+            # log(summary)
             visdom.log('generator-loss-vs-steps', 
                     'line', summary['Generator Loss'])
             visdom.log('critic-loss-vs-steps', 
@@ -86,9 +86,12 @@ def dataset_test(args):
             # if count % (save_every) == 0:
             #     saver.checkpoint_trainer(trainer)
 
-        avg_loss = meters["loss"].avg
-        meters['epoch'].update(avg_loss)
-        visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
+    for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
+        run_epoch(epoch, [next(iter(loader))], trainer, visdom)
+
+        # new_loader = [next(iter(loader))]
+
+        # visdom.log('avg-generator-loss-vs-epoch', 'line', avg_loss)
         # saver.checkpoint_trainer(trainer)
         # debug_generate(trainer.model.module.generator.model, [next(iter(loader))], dataset.vocab, visdom)
 

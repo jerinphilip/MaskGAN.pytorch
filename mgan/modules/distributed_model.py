@@ -1,13 +1,20 @@
 import torch
 from torch import nn
-from mgan.criterions import TCELoss, REINFORCE, TBCELoss, WeightedMSELoss
-from mgan.models import \
-        MLEGenerator, \
-        MGANDiscriminator, \
-        MGANGenerator, \
+from collections import namedtuple
+
+from mgan.criterions import \
+        TCELoss,            \
+        REINFORCE,          \
+        TBCELoss,           \
+        WeightedMSELoss
+
+from mgan.models import     \
+        MLEGenerator,       \
+        MGANDiscriminator,  \
+        MGANGenerator,      \
         MGANCritic
 
-from collections import namedtuple
+
 
 class LossModel(nn.Module):
     def __init__(self, model, criterion):
@@ -95,24 +102,3 @@ class MGANModel(nn.Module):
         return (loss, None)
 
 
-class MLEDistributedGenerator(nn.Module):
-    def __init__(self, model, criterion):
-        super().__init__()
-        self._lm = LossModel(model, criterion)
-
-    @classmethod
-    def build_model(cls, args, task): 
-        model = MLEGenerator.build_model(args, task)
-        criterion = TCELoss()
-        return cls(model, criterion)
-
-    def forward(self, src_tokens, src_lengths, prev_output_tokens):
-        net_output = self._lm.model(src_tokens, 
-                src_lengths, prev_output_tokens)
-
-        logits = net_output[0].float()
-        logits = logits[:, :-1, :].contiguous()
-        target = prev_output_tokens[:, 1:].contiguous().view(-1)
-
-        loss = self._lm.criterion(logits, target)
-        return (loss, None)

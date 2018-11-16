@@ -1,14 +1,14 @@
-from fairseq.models.lstm \
-        import LSTMEncoder, \
-               LSTMDecoder, \
-               LSTMModel, \
-               base_architecture, \
-               Embedding
+import torch
+from torch import nn
+
+from fairseq.models.lstm import \
+        LSTMEncoder,       \
+        LSTMDecoder,       \
+        LSTMModel,         \
+        base_architecture, \
+        Embedding
 
 from fairseq import options, utils
-
-from torch import nn
-import torch
 
 class MGANCriticEncoder(LSTMEncoder):
     pass

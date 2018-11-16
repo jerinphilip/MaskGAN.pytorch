@@ -1,10 +1,6 @@
-from .distributed_train import DistributedTrain
-
-from .distributed_model import          \
-        MLEDistributedGenerator, MGANModel
-from torch.nn.parallel import DataParallel
-
 import torch
+from torch.nn.parallel import DataParallel
+from .distributed_model import MGANModel
 
 
 class MGANTrainer:
@@ -14,24 +10,20 @@ class MGANTrainer:
         self._model = MGANModel.build_model(args, task, pretrain=self.pretrain)
         self.model = DataParallel(self._model)
         self.model = self.model.to(device)
-        # self.opt = torch.optim.SGD(self.model.parameters(), lr=0.01)
         self.opt = torch.optim.Adam(self.model.parameters())
-        self.dopt = self.opt
-        self.gopt = self.opt
 
         self.savable = [
              ["mgan-model", self.model.module]
         ]
 
 
-    def run(self, *args):
+    def run(self, epoch, samples):
         g_steps, d_steps = 5, 5
         summary = {}
-        discriminator_summary = self.run_dsteps(d_steps, *args)
+        discriminator_summary = self.run_dsteps(d_steps, samples)
         torch.cuda.empty_cache()
-        generator_summary = self.run_gsteps(g_steps, *args)
+        generator_summary = self.run_gsteps(g_steps, samples)
         torch.cuda.empty_cache()
-        # generator_summary = {"Generator Loss": 0}
 
         summary.update(discriminator_summary)
         summary.update(generator_summary)
@@ -44,7 +36,7 @@ class MGANTrainer:
         prev_output_tokens = tgt_tokens
         d_real_loss, d_fake_loss = 0, 0,
         for step in range(d_steps):
-            self.dopt.zero_grad()
+            self.opt.zero_grad()
             _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], 
                     src_lengths, tgt_mask, prev_output_tokens, 
                     tag="d-step", real=True)
@@ -68,7 +60,7 @@ class MGANTrainer:
             
             d_real_loss += _d_real_loss.item()
             d_fake_loss += _d_fake_loss.item()
-            self.dopt.step()
+            self.opt.step()
 
 
         return {
@@ -86,7 +78,7 @@ class MGANTrainer:
         closs = 0
 
         for step in range(g_steps):
-            self.gopt.zero_grad()
+            self.opt.zero_grad()
             _gloss, samples, _closs = self.model(src_tokens, src_lengths, src_mask,
                     prev_output_tokens, tag="g-step")
 
@@ -99,7 +91,7 @@ class MGANTrainer:
                 _closs.backward()
                 closs += _closs.item()
 
-            self.gopt.step()
+            self.opt.step()
 
 
         return {
