@@ -111,5 +111,6 @@ class MGANCritic(LSTMModel):
         return cls(encoder, decoder)
 
     def forward(self, *args, **kwargs):
+        self.encoder.lstm.flatten_parameters()
         return super().forward(*args, **kwargs)
 
