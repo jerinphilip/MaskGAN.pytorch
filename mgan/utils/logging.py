@@ -5,6 +5,7 @@ from torchnet.logger import \
         VisdomPlotLogger, \
         VisdomLogger,   \
         VisdomTextLogger
+from visdom import Visdom
 
 import subprocess
 from warnings import warn
@@ -34,8 +35,13 @@ class VisdomCentral:
             # "env": "main"
         }
 
+        self.check_visdom_works()
         self.loggers = {}
         self.init_loggers()
+
+    def check_visdom_works(self):
+        viz = Visdom(server='http://'+self.defaults["server"], port=self.defaults["port"])
+        assert (viz.check_connection())
 
     def init_loggers(self):
         def plogger(title):
