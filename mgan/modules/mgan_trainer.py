@@ -21,7 +21,7 @@ class MGANTrainer:
 
 
     def run(self, epoch, samples):
-        g_steps, d_steps = 20, 20
+        g_steps, d_steps = 200, 200
         self.lr_scheduler.step(epoch)
         self.run_gsteps(g_steps, samples)
         self.run_dsteps(d_steps, samples)
