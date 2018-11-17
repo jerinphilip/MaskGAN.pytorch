@@ -6,7 +6,7 @@ from .distributed_model import MGANModel
 class MGANTrainer:
     def __init__(self, args, task, saver, logger):
         device = torch.device("cuda")
-        self.pretrain = True
+        self.pretrain = False
         self._model = MGANModel.build_model(args, task, pretrain=self.pretrain)
         self.model = DataParallel(self._model)
         self.model = self.model.to(device)
@@ -18,9 +18,10 @@ class MGANTrainer:
 
 
     def run(self, epoch, samples):
-        g_steps, d_steps = 5, 5
-        self.run_dsteps(d_steps, samples)
-        self.run_gsteps(g_steps, samples)
+        g_steps, d_steps = 20, 20
+        # self.run_gsteps(g_steps, samples)
+        # self.run_dsteps(d_steps, samples)
+        self.enhance_critic(samples)
         self.saver.checkpoint("mgan", self.model.module)
         self.step += 1
 
@@ -55,8 +56,22 @@ class MGANTrainer:
 
         self.logger.log("discriminator/real", self.step, d_real_loss/d_steps)
         self.logger.log("discriminator/fake", self.step, d_real_loss/d_steps)
-        self.logger.log("discriminator/fake", self.step, (d_fake_loss+d_real_loss)/(2*d_steps))
+        self.logger.log("discriminator",      self.step, (d_fake_loss+d_real_loss)/(2*d_steps))
 
+    def enhance_critic(self, samples):
+        src_tokens, src_lengths, src_mask, \
+            tgt_tokens, tgt_lengths, tgt_mask = samples
+        max_steps = 4
+        closs = 0
+        for steps in range(max_steps):
+            _gloss, samples, _closs = self.model(src_tokens, src_lengths, torch.ones_like(src_mask),
+                    tgt_tokens, tag="g-step")
+            _closs = _closs.mean()
+            _closs.backward()
+            closs += _closs.item()
+        self.logger.log("critic/pretrain", self.step, closs/steps)
+
+    
     def run_gsteps(self, g_steps, samples):
         src_tokens, src_lengths, src_mask, \
             tgt_tokens, tgt_lengths, tgt_mask = samples

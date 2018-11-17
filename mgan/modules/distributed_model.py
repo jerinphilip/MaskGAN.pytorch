@@ -44,7 +44,7 @@ class MGANModel(nn.Module):
             gcriterion = TCELoss()
         else:
             generator = MGANGenerator.build_model(args, task)
-            reinforce = REINFORCE(gamma=0.6, clip_value=1)
+            reinforce = REINFORCE(gamma=0.6, clip_value=5.0)
             gcriterion = reinforce
 
         gloss = LossModel(generator, gcriterion)

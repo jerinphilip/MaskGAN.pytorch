@@ -46,7 +46,8 @@ class VisdomCentral:
             'discriminator/real',
             'discriminator',
             'discriminator/fake',
-            'critic/loss'
+            'critic/loss',
+            'critic/pretrain'
         ]
 
         self.loggers = dict([(k, plogger(k)) for k in keys])
