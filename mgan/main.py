@@ -47,27 +47,20 @@ def dataset_test(args):
     task = Task(source_dictionary=dataset.vocab, 
             target_dictionary=dataset.vocab)
 
-    meters = {}
-    meters['epoch'] = AverageMeter()
-    meters['loss'] = AverageMeter()
-
     device = torch.device('cuda')
-
     args = Args()
     max_epochs = 1000
 
-    checkpoint_path = "/scratch/jerin/mgan/"
+    checkpoint_path = "/home/jerin/mgan-attempts/"
     saver = Saver(checkpoint_path)
     trainer = MGANTrainer(args, task, saver, visdom)
-    from mgan.utils.leaks import leak_check
-
-    def run_epoch(epoch, loader, trainer, visdom):
-        pbar = tqdm_progress_bar(loader, epoch=epoch)
-        for samples in pbar:
-            trainer.run(epoch, samples)
+    from mgan.utils.leaks import leak_check, LeakCheck
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
-        run_epoch(epoch, loader, trainer, visdom)
+        pbar = tqdm_progress_bar(loader, epoch=epoch)
+        for samples in pbar:
+            with LeakCheck():
+                trainer.run(epoch, samples)
 
 
 if __name__ == '__main__':

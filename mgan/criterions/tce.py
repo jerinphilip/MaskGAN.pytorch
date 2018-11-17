@@ -37,7 +37,8 @@ class WeightedMSELoss(nn.Module):
 
     def forward(self, preds, truths, weights):
         mse_loss = self.criterion(preds, truths)
-        return weights*mse_loss
+        missing = weights.sum()
+        return weights*mse_loss/missing
 
 
 def _debug(pred_logits, truths, weight):

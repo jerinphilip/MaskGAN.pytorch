@@ -44,7 +44,7 @@ class MGANModel(nn.Module):
             gcriterion = TCELoss()
         else:
             generator = MGANGenerator.build_model(args, task)
-            reinforce = REINFORCE(gamma=0.6, clip_value=5.0)
+            reinforce = REINFORCE(gamma=0.01, clip_value=5.0)
             gcriterion = reinforce
 
         gloss = LossModel(generator, gcriterion)
@@ -78,9 +78,10 @@ class MGANModel(nn.Module):
 
         gloss = -1*reward
         critic_loss = self.critic.criterion(baselines.squeeze(2), 
-                -1*cumulative_rewards.detach(), src_mask)
+                cumulative_rewards.detach(), src_mask)
 
-        return (gloss, samples, critic_loss)
+        avg_reward_per_token = cumulative_rewards.sum()/src_mask.sum()
+        return (gloss, samples, critic_loss, avg_reward_per_token)
 
     def _gstep_pretrain(self, src_tokens, src_lengths, 
             src_mask, prev_output_tokens):
@@ -99,7 +100,7 @@ class MGANModel(nn.Module):
 
         samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, prev_output_tokens)
-        return (loss, samples, None)
+        return (loss, samples, None, None)
 
     def _dstep(self, src_tokens, src_lengths, 
             src_mask, prev_output_tokens, real=True):

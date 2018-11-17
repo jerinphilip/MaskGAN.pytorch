@@ -18,7 +18,6 @@ class REINFORCE(nn.Module):
 
         rewards = rewards.squeeze(2)
         baselines = baselines.squeeze(2)
-        # print(rewards.size(), logits.size(), weight.size())
 
         rewards = rewards * weight
 
@@ -28,15 +27,15 @@ class REINFORCE(nn.Module):
             for s in range(t, seqlen):
                 exp = float(s-t)
                 k = (self.gamma ** exp)
-                cum_value +=  weight[:, s]  * rewards[:, s] * log_probs[:, s]
+                cum_value +=  k * weight[:, s]  * rewards[:, s] * log_probs[:, s]
             cumulative_rewards.append(cum_value)
 
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
         # print(cumulative_rewards.size(), baselines.size())
         advantages = weight*(cumulative_rewards - baselines)
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
-        missing = weight.sum()
-        reward = advantages.sum()/ missing
-        return (reward, cumulative_rewards)
+        #   missing = weight.sum()
+        #   reward = advantages.sum()/ missing
+        return (advantages, cumulative_rewards)
 
 

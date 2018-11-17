@@ -2,6 +2,7 @@ from collections import defaultdict
 from gc import get_objects
 import functools
 from pprint import pprint
+import objgraph
 
 
 def leak_check(f):
@@ -27,4 +28,16 @@ def leak_check(f):
         print("Finished Leack Check!")
         return result
     return __inner
+
+
+class LeakCheck:
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        objgraph.show_growth(limit=10)
+
+    def __exit__(self, *args):
+        objgraph.show_growth()
+
 

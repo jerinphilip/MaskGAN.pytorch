@@ -41,19 +41,23 @@ class VisdomCentral:
 
     def check_visdom_works(self):
         viz = Visdom(server='http://'+self.defaults["server"], port=self.defaults["port"])
-        assert (viz.check_connection())
+        try:
+            assert (viz.check_connection())
+        except:
+            raise Exception("Error: Check Visdom Server Setup")
 
     def init_loggers(self):
         def plogger(title):
             return VisdomPlotLogger('line', opts={'title': title}, **self.defaults)
 
         keys = [
-            'generator/loss',
+            'generator/advantage',
             'discriminator/real',
             'discriminator',
             'discriminator/fake',
             'critic/loss',
-            'critic/pretrain'
+            'critic/pretrain',
+            'generator/reward/token'
         ]
 
         self.loggers = dict([(k, plogger(k)) for k in keys])
