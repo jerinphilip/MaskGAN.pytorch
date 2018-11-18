@@ -30,7 +30,7 @@ def dataset_test(args):
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
 
     # Compute Batch Size
-    max_tokens_per_device = 8000
+    max_tokens_per_device = 1000
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
     truncate = 20

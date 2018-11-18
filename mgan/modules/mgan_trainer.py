@@ -21,7 +21,7 @@ class MGANTrainer:
 
 
     def run(self, epoch, samples):
-        g_steps, d_steps = 200, 200
+        g_steps, d_steps = 20, 20
         self.lr_scheduler.step(epoch)
         self.run_gsteps(g_steps, samples)
         self.run_dsteps(d_steps, samples)
@@ -35,8 +35,10 @@ class MGANTrainer:
 
         prev_output_tokens = tgt_tokens
         d_real_loss, d_fake_loss = 0, 0,
+        loss = 0
+        self.opt.zero_grad()
+
         for step in range(d_steps):
-            self.opt.zero_grad()
             _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], 
                     src_lengths, tgt_mask, prev_output_tokens, 
                     tag="d-step", real=True)
@@ -51,12 +53,13 @@ class MGANTrainer:
                              tag="d-step", real=False)
             _d_fake_loss = _d_fake_loss.mean()
 
-            loss = (_d_real_loss + _d_fake_loss )/2
-            loss.backward()
+            loss += (_d_real_loss + _d_fake_loss )/2
             
             d_real_loss += _d_real_loss.item()
             d_fake_loss += _d_fake_loss.item()
-            self.opt.step()
+
+        loss.backward()
+        self.opt.step()
 
         self.logger.log("discriminator/real", self.step, d_real_loss/d_steps)
         self.logger.log("discriminator/fake", self.step, d_real_loss/d_steps)
@@ -67,16 +70,19 @@ class MGANTrainer:
             tgt_tokens, tgt_lengths, tgt_mask = samples
         max_steps = 4
         closs = 0
+        self.opt.zero_grad()
+
         for steps in range(max_steps):
-            self.opt.zero_grad()
             if random.random() < 0.3:
                 src_mask = torch.ones_like(src_mask)
             _gloss, samples, _closs, _ = self.model(src_tokens, src_lengths, src_mask,
                     tgt_tokens, tag="g-step")
-            _closs = _closs.mean()
-            _closs.backward()
-            self.opt.step()
+            #_closs = _closs.mean()
+            loss += _closs.mean()
             closs += _closs.item()
+
+        loss.backward()
+        self.opt.step()
         self.logger.log("critic/pretrain", self.step, closs/steps)
 
     
@@ -88,25 +94,28 @@ class MGANTrainer:
         gloss = 0
         closs = 0
         avg_reward = 0
+        rgloss = 0
+        rcloss = 0
 
         for step in range(g_steps):
             self.opt.zero_grad()
             _gloss, samples, _closs, _avg_reward = self.model(src_tokens, src_lengths, src_mask,
                     prev_output_tokens, tag="g-step")
 
-            _gloss = _gloss.mean()
-            _gloss.backward()
-            gloss += _gloss.item()
+            rgloss += _gloss.mean()
+            gloss += _gloss.mean().item()
 
             avg_reward += _avg_reward.mean().item()
 
             if not self.pretrain:
-                _closs = _closs.mean()
-                _closs.backward()
-                closs += _closs.item()
+                rcloss = _closs.mean()
+                closs += _closs.mean().item()
 
-            self.opt.step()
+        rcloss = -1*rcloss
+        rcloss.backward()
+        rgloss.backward()
+        self.opt.step()
 
-        self.logger.log("generator/advantage", self.step, -1*gloss/g_steps)
+        self.logger.log("generator/advantage", self.step, gloss/g_steps)
         self.logger.log("generator/reward/token", self.step, avg_reward)
         self.logger.log("critic/loss", self.step, closs/g_steps)
