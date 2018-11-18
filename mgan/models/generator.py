@@ -15,7 +15,7 @@ import torch
 class MGANGEncoder(LSTMEncoder): pass
 class MGANGDecoder(LSTMDecoder): pass
 class MGANGenerator(LSTMModel):
-    def forward(self, src_tokens, src_lengths, prev_output_tokens):
+    def forward(self, src_tokens, src_lengths, prev_output_tokens, src_mask):
         self.encoder.lstm.flatten_parameters()
         logits, attns = super().forward(src_tokens, src_lengths, prev_output_tokens)
         bsz, seqlen, vocab_size = logits.size()
@@ -34,8 +34,9 @@ class MGANGenerator(LSTMModel):
             distribution = Categorical(logits=logit)
             # Output is H dimension?
             sampled = distribution.sample()
-            log_probs.append(distribution.log_prob(sampled))
-            samples.append(sampled)
+            fsampled = torch.where(src_mask[:, t].byte(), sampled, prev_output_tokens[:, t])
+            log_probs.append(distribution.log_prob(fsampled))
+            samples.append(fsampled)
             
 
         # Once all are sampled, it's possible to find the rewards from the generator.
@@ -43,7 +44,7 @@ class MGANGenerator(LSTMModel):
         log_probs = torch.stack(log_probs, dim=1)
         # I may need to strip off an extra token generated.
         # Nope, I may not need to. Yes, I may need to, at the end though.
-        samples = samples[:, :-1]
+        samples = samples[:, 1:]
         return (samples, log_probs, attns)
 
 class MLEGenerator(LSTMModel):

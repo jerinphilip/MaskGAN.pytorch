@@ -21,7 +21,7 @@ class MGANTrainer:
 
 
     def run(self, epoch, samples):
-        g_steps, d_steps = 20, 20
+        g_steps, d_steps = 50, 50
         self.lr_scheduler.step(epoch)
         self.run_gsteps(g_steps, samples)
         self.run_dsteps(d_steps, samples)
@@ -102,6 +102,10 @@ class MGANTrainer:
             _gloss, samples, _closs, _avg_reward = self.model(src_tokens, src_lengths, src_mask,
                     prev_output_tokens, tag="g-step")
 
+            # print("samples", samples[0, :].tolist())
+            # print("masked ", src_tokens[0, :].tolist())
+            # print("actuals", prev_output_tokens[0, 1:].tolist())
+
             rgloss += _gloss.mean()
             gloss += _gloss.mean().item()
 
@@ -111,7 +115,7 @@ class MGANTrainer:
                 rcloss = _closs.mean()
                 closs += _closs.mean().item()
 
-        rcloss = -1*rcloss
+        rgloss = -1*rgloss
         rcloss.backward()
         rgloss.backward()
         self.opt.step()

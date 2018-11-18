@@ -33,7 +33,7 @@ class REINFORCE(nn.Module):
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
 
         # Find and clamp advantages
-        # advantages = weight*(cumulative_rewards - baselines)
+        advantages = weight*(cumulative_rewards - baselines)
         advantages = weight * cumulative_rewards
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 

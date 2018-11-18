@@ -66,7 +66,7 @@ class MGANModel(nn.Module):
 
     def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
         samples, log_probs, attns = self.generator.model(src_tokens, 
-                        src_lengths, prev_output_tokens)
+                        src_lengths, prev_output_tokens, src_mask)
 
         with torch.no_grad():
             logits, attn_scores = self.discriminator.model(samples, 

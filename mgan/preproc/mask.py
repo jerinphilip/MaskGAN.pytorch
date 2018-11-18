@@ -31,7 +31,7 @@ class ContiguousRandom(Mask):
     def forward(self, xs):
         n_chars = self.n_chars
         mask = torch.zeros(len(xs))
-        start = self.r.randint(0, len(xs)-n_chars-1)
+        start = self.r.randint(3, len(xs)-n_chars-1)
         for i in range(start, start+n_chars):
             xs[i] = self.mask_token
             mask[i] = 1
