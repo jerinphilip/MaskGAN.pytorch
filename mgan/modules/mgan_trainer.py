@@ -51,6 +51,7 @@ class MGANTrainer:
             _d_fake_loss, _  = self.model(samples, src_lengths, tgt_mask,
                              prev_output_tokens, 
                              tag="d-step", real=False)
+
             _d_fake_loss = _d_fake_loss.mean()
 
             loss += (_d_real_loss + _d_fake_loss )/2
@@ -62,7 +63,7 @@ class MGANTrainer:
         self.opt.step()
 
         self.logger.log("discriminator/real", self.step, d_real_loss/d_steps)
-        self.logger.log("discriminator/fake", self.step, d_real_loss/d_steps)
+        self.logger.log("discriminator/fake", self.step, d_fake_loss/d_steps)
         self.logger.log("discriminator",      self.step, (d_fake_loss+d_real_loss)/(2*d_steps))
 
     def enhance_critic(self, samples):

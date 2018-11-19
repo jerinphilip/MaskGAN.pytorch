@@ -29,6 +29,7 @@ class MGANGenerator(LSTMModel):
             logit = logits[:, t, :]
             # Good news, categorical works for a batch.
             # B x H dimension. Looks like logit's are already in that form.
+            # TODO(jerin): Verify correctness.
             EPS = 1e-7
             logit = logit + EPS
             distribution = Categorical(logits=logit)
@@ -42,8 +43,6 @@ class MGANGenerator(LSTMModel):
         # Once all are sampled, it's possible to find the rewards from the generator.
         samples = torch.stack(samples, dim=1)
         log_probs = torch.stack(log_probs, dim=1)
-        # I may need to strip off an extra token generated.
-        # Nope, I may not need to. Yes, I may need to, at the end though.
         samples = samples[:, 1:]
         return (samples, log_probs, attns)
 

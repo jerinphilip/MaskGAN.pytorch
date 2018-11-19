@@ -34,7 +34,7 @@ class REINFORCE(nn.Module):
 
         # Find and clamp advantages
         advantages = weight*(cumulative_rewards - baselines)
-        advantages = weight * cumulative_rewards
+        # advantages = weight * cumulative_rewards
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 
         # Multiply with logprobs
