@@ -46,9 +46,8 @@ class MGANTrainer:
                 _gloss, samples, _closs, _ = self.model(src_tokens, src_lengths, src_mask,
                                 prev_output_tokens, tag="g-step")
 
-            _d_fake_loss, _  = self.model(samples, src_lengths, tgt_mask,
-                             prev_output_tokens, 
-                             tag="d-step", real=False)
+            _d_fake_loss, _  = self.model(src_tokens, src_lengths, tgt_mask,
+                             samples, tag="d-step", real=False)
 
             _d_fake_loss = _d_fake_loss.mean()
 

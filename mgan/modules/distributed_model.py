@@ -69,10 +69,10 @@ class MGANModel(nn.Module):
                         src_lengths, prev_output_tokens, src_mask)
 
         with torch.no_grad():
-            logits, attn_scores = self.discriminator.model(samples, 
-                    src_lengths, prev_output_tokens)
+            logits, attn_scores = self.discriminator.model(src_tokens, 
+                    src_lengths, samples)
 
-        baselines, _ = self.critic.model(samples, src_lengths, prev_output_tokens)
+        baselines, _ = self.critic.model(src_tokens, src_lengths, samples)
         reward, cumulative_rewards = self.generator.criterion(log_probs, 
                 logits, src_mask, baselines.detach())
 

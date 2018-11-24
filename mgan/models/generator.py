@@ -43,7 +43,7 @@ class MGANGenerator(LSTMModel):
         # Once all are sampled, it's possible to find the rewards from the generator.
         samples = torch.stack(samples, dim=1)
         log_probs = torch.stack(log_probs, dim=1)
-        samples = samples[:, 1:]
+        #samples = samples[:, 1:]
         return (samples, log_probs, attns)
 
 class MLEGenerator(LSTMModel):
