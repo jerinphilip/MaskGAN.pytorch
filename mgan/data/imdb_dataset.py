@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from fairseq.data.dictionary import Dictionary
 from tqdm import tqdm
+from copy import deepcopy
 
 class IMDbDataset(Dataset):
     def __init__(self, path):
@@ -54,10 +55,12 @@ class IMDbSingleDataset(Dataset):
         return self.lines[idx]
 
 class TensorIMDbDataset(IMDbSingleDataset):
-    def __init__(self, path, preprocess, rebuild=False):
+    def __init__(self, path, tokenizer, mask_builder, truncate_length, rebuild=False):
         super().__init__(path)
-        self.preprocess = preprocess
+        self.mask_builder = mask_builder
+        self.tokenizer = tokenizer
         self.build_vocab(rebuild=rebuild)
+        self.truncate_length = truncate_length
         # self.filter(preprocess)
 
     def build_vocab(self, rebuild=False):
@@ -71,73 +74,71 @@ class TensorIMDbDataset(IMDbSingleDataset):
     def rebuild_vocab(self):
         vocab_path = self.path + '.vocab.pt'
         self.vocab = Dictionary()
-        self.vocab.add_symbol(self.preprocess.mask.mask_token)
+        self.vocab.add_symbol(self.mask_builder.mask_token)
         for i in tqdm(range(len(self)), desc='build-vocab'):
             contents = super().__getitem__(i)
-            tokens, mask = self.preprocess(contents, mask=False)
+            tokens = self.tokenizer(contents)
             for token in tokens:
                 self.vocab.add_symbol(token)
 
         self.vocab.save(vocab_path)
 
-
-
     def __getitem__(self, idx):
         contents = super().__getitem__(idx)
-        tgt, tgt_length, tgt_mask = self.Tensor_idxs(contents, masked=False, move_eos_to_beginning=True)
-        src, src_length, src_mask  = self.Tensor_idxs(contents, masked=True)
-        #assert(tgt_length == src_length)
-        tgt_mask[1:] = src_mask
-        return (src, src_length, src_mask, tgt, tgt_length, tgt_mask)
-    
-    def Tensor_idxs(self, contents, masked=True, move_eos_to_beginning=False):
-        tokens, tmask = self.preprocess(contents, mask=masked)
-        token_count = len(tokens)
-        
-        idxs = []
-        if move_eos_to_beginning:
-            mask = torch.zeros(len(tokens)+2+1)
-            idxs.append(self.vocab.eos())
-            mask[1:token_count+1] = tmask[:token_count]
-            token_count += 1
-        else:
-            mask = torch.zeros(len(tokens)+1+1)
-            mask[:token_count] = tmask[:token_count]
+        tokens = self.tokenizer(contents)
 
-        for token in tokens:
-            idxs.append(self.vocab.index(token))
+        sequence_length = min(self.truncate_length, len(tokens))
+        mask_idxs = self.mask_builder(sequence_length)
+        tokens = tokens[:sequence_length]
 
-        idxs.append(self.vocab.eos())
-        token_count += 1
+        def get_pair(tokens, mask_idxs, mask_id):
+            idxs = [self.vocab.index(token) for token in tokens]
 
-        return (torch.LongTensor(idxs), token_count, mask)
+            def _pad(ls, desired_length, pad_index):
+                padded_ls = deepcopy(ls)
+                while len(padded_ls) <= desired_length:
+                    padded_ls.append(pad_index)
+                return padded_ls
+
+            srcs = deepcopy(idxs)
+            srcs.append(self.vocab.eos())
+
+            tgts = deepcopy(idxs)
+            tgts.insert(0, self.vocab.eos())
+
+            srcs = _pad(srcs, self.truncate_length, self.vocab.pad())
+            tgts = _pad(tgts, self.truncate_length, self.vocab.pad())
+
+            mask = torch.zeros(len(tgts))
+            for mask_idx in mask_idxs:
+                offset = 1 # For eos
+                mask[mask_idx + offset] = 1
+                srcs[mask_idx] = mask_id
+
+            return (srcs, tgts, len(srcs), mask)
+
+        mask_id = self.vocab.index(self.mask_builder.mask_token)
+        return get_pair(tokens, mask_idxs, mask_id)
+
 
     def get_collate_fn(self):
         return TensorIMDbDataset.collate
 
     @staticmethod
     def collate(samples):
-        # TODO: Implement Collate
-        srcs, src_lengths, src_masks, \
-                tgts, tgt_lengths, tgt_masks = list(zip(*samples))
+        srcs, tgts, lengths, masks = list(zip(*samples))
 
-        # Convert lengths to Tensors
-        src_lengths = torch.LongTensor(src_lengths)
+        srcs = torch.LongTensor(srcs)
+        tgts = torch.LongTensor(tgts)
 
-        # Sort for RNN PackedPaddedSequence
-        src_lengths, sort_order = src_lengths.sort(descending=True)
-        tgt_lengths = torch.LongTensor(tgt_lengths)
-        tgt_lengths = tgt_lengths.index_select(0, sort_order)
+        lengths = torch.LongTensor(lengths)
+        lengths, sort_order = lengths.sort(descending=True)
+        
+        def _rearrange(tensor):
+            return tensor.index_select(0, sort_order)
 
-        # Common sort based processing + Padding
-        def process(seqs, seq_masks, sort_order):
-            seqs = pad_sequence(seqs, batch_first=True)
-            seqs = seqs.index_select(0, sort_order)
-            seq_masks = torch.stack(seq_masks, dim=0).index_select(0, sort_order)
-            return (seqs, seq_masks)
+        srcs  = _rearrange(pad_sequence(srcs, batch_first=True))
+        tgts  = _rearrange(pad_sequence(tgts, batch_first=True))
+        masks = _rearrange(torch.stack(masks, dim=0))
 
-        # Apply process to srcs and tgts and respective masks
-        srcs, src_masks = process(srcs, src_masks, sort_order)
-        tgts, tgt_masks = process(tgts, tgt_masks, sort_order)
-
-        return (srcs, src_lengths, src_masks, tgts, tgt_lengths, tgt_masks)
+        return (srcs, tgts, lengths, masks)

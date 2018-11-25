@@ -19,6 +19,8 @@ class MGANTrainer:
         self.saver.load("mgan", self.model.module)
 
     def run(self, epoch, samples):
+        # self._debug(samples)
+        # return
         num_rollouts = 50
         self.lr_scheduler.step(epoch)
         self.rollout_discriminator(num_rollouts=num_rollouts, samples=samples)
@@ -27,27 +29,29 @@ class MGANTrainer:
         self.saver.checkpoint("mgan", self.model.module)
         self.step += 1
 
-    def rollout_discriminator(self, num_rollouts, samples):
-        src_tokens, src_lengths, src_mask, \
-            tgt_tokens, tgt_lengths, tgt_mask = samples
+    def _debug(self, samples):
+        masked, unmasked, lengths, mask = samples
+        B, T = masked.size()
+        for b in range(B):
+            print("  masked:", masked[b, :].tolist())
+            print("unmasked:", unmasked[b, :].tolist())
+            print("    mask:", mask[b, :].tolist())
+            print("")
 
-        prev_output_tokens = tgt_tokens
+    def rollout_discriminator(self, num_rollouts, samples):
+        masked, unmasked, lengths, mask = samples
         d_real_loss, d_fake_loss = 0, 0,
         loss = 0
         self.opt.zero_grad()
 
         for rollout in range(num_rollouts):
-            _d_real_loss, _ = self.model(prev_output_tokens[:, 1:], 
-                    src_lengths, tgt_mask, prev_output_tokens, 
-                    tag="d-step", real=True)
+            _d_real_loss, _ = self.model(masked, lengths, mask, unmasked, tag="d-step", real=True)
             _d_real_loss = _d_real_loss.mean()
 
             with torch.no_grad():
-                _gloss, samples, _closs, _ = self.model(src_tokens, src_lengths, src_mask,
-                                prev_output_tokens, tag="g-step")
+                _gloss, samples, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
-            _d_fake_loss, _  = self.model(src_tokens, src_lengths, tgt_mask,
-                             samples, tag="d-step", real=False)
+            _d_fake_loss, _  = self.model(masked, lengths, mask, samples, tag="d-step", real=False)
 
             _d_fake_loss = _d_fake_loss.mean()
 
@@ -64,16 +68,14 @@ class MGANTrainer:
         self.logger.log("discriminator",      self.step, (d_fake_loss+d_real_loss)/(2*num_rollouts))
 
     def rollout_critic(self, num_rollouts, samples):
-        src_tokens, src_lengths, src_mask, \
-            tgt_tokens, tgt_lengths, tgt_mask = samples
+        masked, unmasked, lengths, mask = samples
         closs = 0
         self.opt.zero_grad()
 
         for rollout in range(num_rollouts):
             if random.random() < 0.3:
                 src_mask = torch.ones_like(src_mask)
-            _gloss, samples, _closs, _ = self.model(src_tokens, src_lengths, src_mask,
-                    tgt_tokens, tag="g-step")
+            _gloss, samples, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
             #_closs = _closs.mean()
             loss += _closs.mean()
             closs += _closs.item()
@@ -84,10 +86,8 @@ class MGANTrainer:
 
     
     def rollout_generator(self, num_rollouts, samples):
-        src_tokens, src_lengths, src_mask, \
-            tgt_tokens, tgt_lengths, tgt_mask = samples
+        masked, unmasked, lengths, mask = samples
 
-        prev_output_tokens = tgt_tokens
         gloss = 0
         closs = 0
         avg_reward = 0
@@ -96,8 +96,7 @@ class MGANTrainer:
 
         for rollout in range(num_rollouts):
             self.opt.zero_grad()
-            _gloss, samples, _closs, _avg_reward = self.model(src_tokens, src_lengths, src_mask,
-                    prev_output_tokens, tag="g-step")
+            _gloss, samples, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
             # print("samples", samples[0, :].tolist())
             # print("masked ", src_tokens[0, :].tolist())

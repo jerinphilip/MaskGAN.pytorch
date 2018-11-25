@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 from tqdm import tqdm
 from collections import namedtuple
+import gc
 
 # Torch imports
 import torch
@@ -33,12 +34,10 @@ def dataset_test(args):
     max_tokens_per_device = 500
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate = 20
-    batch_size = int(max_tokens/truncate)
+    truncate_length = 20
+    batch_size = int(max_tokens/truncate_length)
 
-
-    preprocess = Preprocess(mask=crmask, tokenize=spm_tokenize, truncate=truncate)
-    dataset = TensorIMDbDataset(args.path, preprocess, rebuild=False)
+    dataset = TensorIMDbDataset(args.path, spm_tokenize, crmask, truncate_length, rebuild=False)
     loader = DataLoader(dataset, batch_size=batch_size, 
             collate_fn=dataset.get_collate_fn(), 
             shuffle=True, num_workers=16)
@@ -61,6 +60,7 @@ def dataset_test(args):
         for samples in pbar:
             with LeakCheck():
                 trainer.run(epoch, samples)
+                gc.collect()
 
 
 if __name__ == '__main__':

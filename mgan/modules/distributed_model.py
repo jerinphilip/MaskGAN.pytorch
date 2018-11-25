@@ -64,27 +64,28 @@ class MGANModel(nn.Module):
                 return self._gstep(*args)
         return self._dstep(*args, real=kwargs['real'])
 
-    def _gstep(self, src_tokens, src_lengths, src_mask, prev_output_tokens):
-        samples, log_probs, attns = self.generator.model(src_tokens, 
-                        src_lengths, prev_output_tokens, src_mask)
+    def _gstep(self, masked, lengths, mask, unmasked):
+        samples, log_probs, attns = self.generator.model(masked, 
+                        lengths, unmasked, mask)
 
+        # Samples is the new unmasked.
+        # Find probability.
         with torch.no_grad():
-            logits, attn_scores = self.discriminator.model(src_tokens, 
-                    src_lengths, samples)
+            logits, attn_scores = self.discriminator.model(masked, 
+                    lengths, samples)
 
-        baselines, _ = self.critic.model(src_tokens, src_lengths, samples)
-        reward, cumulative_rewards = self.generator.criterion(log_probs, 
-                logits, src_mask, baselines.detach())
+        baselines, _ = self.critic.model(masked, lengths, samples)
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
 
         gloss = reward
         critic_loss = self.critic.criterion(baselines.squeeze(2), 
-                cumulative_rewards.detach(), src_mask)
+                cumulative_rewards.detach(), mask)
 
-        avg_reward_per_token = cumulative_rewards.sum()/src_mask.sum()
+        avg_reward_per_token = cumulative_rewards.sum()/mask.sum()
         return (gloss, samples, critic_loss, avg_reward_per_token)
 
     def _gstep_pretrain(self, src_tokens, src_lengths, 
-            src_mask, prev_output_tokens):
+            mask, prev_output_tokens):
         logits, attns = self.generator.model(src_tokens, 
                         src_lengths, prev_output_tokens)
 
@@ -102,15 +103,13 @@ class MGANModel(nn.Module):
         loss = self.generator.criterion(logits, prev_output_tokens)
         return (loss, samples, None, None)
 
-    def _dstep(self, src_tokens, src_lengths, 
-            src_mask, prev_output_tokens, real=True):
-        logits, attn_scores = self.discriminator.model(src_tokens, 
-                src_lengths, prev_output_tokens)
-        src_mask = src_mask.unsqueeze(2)
+    def _dstep(self, masked, lengths, mask, unmasked, real=True):
+        logits, attn_scores = self.discriminator.model(masked, lengths, unmasked)
+        mask = mask.unsqueeze(2)
         truths = torch.ones_like(logits) if real \
-                else torch.ones_like(logits) - src_mask[:, :-1]
+                else torch.ones_like(logits) - mask
 
-        loss = self.discriminator.criterion(logits, truths, weight=src_mask[:, :-1])
+        loss = self.discriminator.criterion(logits, truths, weight=mask)
         return (loss, None)
 
 
