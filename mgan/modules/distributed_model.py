@@ -65,14 +65,12 @@ class MGANModel(nn.Module):
         return self._dstep(*args, real=kwargs['real'])
 
     def _gstep(self, masked, lengths, mask, unmasked):
-        samples, log_probs, attns = self.generator.model(masked, 
-                        lengths, unmasked, mask)
+        samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
 
         # Samples is the new unmasked.
         # Find probability.
         with torch.no_grad():
-            logits, attn_scores = self.discriminator.model(masked, 
-                    lengths, samples)
+            logits, attn_scores = self.discriminator.model(masked, lengths, samples)
 
         baselines, _ = self.critic.model(masked, lengths, samples)
         # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
@@ -108,8 +106,7 @@ class MGANModel(nn.Module):
     def _dstep(self, masked, lengths, mask, unmasked, real=True):
         logits, attn_scores = self.discriminator.model(masked, lengths, unmasked)
         mask = mask.unsqueeze(2)
-        truths = torch.ones_like(logits) if real \
-                else torch.ones_like(logits) - mask
+        truths = torch.ones_like(logits) if real  else torch.ones_like(logits) - mask
 
         loss = self.discriminator.criterion(logits, truths, weight=mask)
         return (loss, None)

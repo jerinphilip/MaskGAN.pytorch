@@ -46,13 +46,12 @@ class MGANTrainer:
 
         for rollout in range(num_rollouts):
             _d_real_loss, _ = self.model(masked, lengths, mask, unmasked, tag="d-step", real=True)
-            _d_real_loss = _d_real_loss.mean()
 
             with torch.no_grad():
-                _gloss, samples, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
+                _gloss, generated, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
-            _d_fake_loss, _  = self.model(masked, lengths, mask, samples, tag="d-step", real=False)
-
+            _d_fake_loss, _  = self.model(masked, lengths, mask, generated, tag="d-step", real=False)
+            _d_real_loss = _d_real_loss.mean()
             _d_fake_loss = _d_fake_loss.mean()
 
             loss += (_d_real_loss + _d_fake_loss )/2
