@@ -111,11 +111,11 @@ class MGANTrainer:
                 rcloss = _closs.mean()
                 closs += _closs.mean().item()
 
-        rgloss = -1*rgloss
+        #rgloss = -1*rgloss
         rcloss.backward()
         rgloss.backward()
         self.opt.step()
 
-        self.logger.log("generator/advantage", self.step, gloss/num_rollouts)
+        self.logger.log("generator/advantage", self.step, -1*gloss/num_rollouts)
         self.logger.log("generator/reward/token", self.step, avg_reward)
         self.logger.log("critic/loss", self.step, closs/num_rollouts)

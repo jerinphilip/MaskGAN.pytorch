@@ -16,10 +16,8 @@ class REINFORCE(nn.Module):
         probs = torch.sigmoid(logits)
         rewards = torch.log(probs + EPS)
 
-        rewards = rewards.squeeze(2)
-        baselines = baselines.squeeze(2)
 
-        rewards = rewards * weight
+        rewards = rewards.squeeze(2)
 
         cumulative_rewards = []
         for t in range(seqlen):
@@ -33,8 +31,12 @@ class REINFORCE(nn.Module):
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
 
         # Find and clamp advantages
+        if baselines is not None:
+            baselines = baselines.squeeze(2)
+        else:
+            baselines = torch.zeros_like(cumulative_rewards)
+
         advantages = weight*(cumulative_rewards - baselines)
-        # advantages = weight * cumulative_rewards
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 
         # Multiply with logprobs

@@ -75,9 +75,11 @@ class MGANModel(nn.Module):
                     lengths, samples)
 
         baselines, _ = self.critic.model(masked, lengths, samples)
-        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, None)
 
-        gloss = reward
+        # Loss is inverse of reward.
+        gloss = -1*reward
         critic_loss = self.critic.criterion(baselines.squeeze(2), 
                 cumulative_rewards.detach(), mask)
 
