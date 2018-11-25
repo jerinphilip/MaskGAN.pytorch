@@ -31,13 +31,16 @@ def leak_check(f):
 
 
 class LeakCheck:
-    def __init__(self):
+    def __init__(self, flag):
+        self.flag = flag
         pass
 
     def __enter__(self):
-        objgraph.show_growth(limit=10)
+        if self.flag:
+            objgraph.show_growth(limit=10)
 
     def __exit__(self, *args):
-        objgraph.show_growth()
+        if self.flag:
+            objgraph.show_growth()
 
 

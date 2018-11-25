@@ -84,10 +84,8 @@ class MGANModel(nn.Module):
         avg_reward_per_token = cumulative_rewards.sum()/mask.sum()
         return (gloss, samples, critic_loss, avg_reward_per_token)
 
-    def _gstep_pretrain(self, src_tokens, src_lengths, 
-            mask, prev_output_tokens):
-        logits, attns = self.generator.model(src_tokens, 
-                        src_lengths, prev_output_tokens)
+    def _gstep_pretrain(self, masked, lengths, mask, unmasked):
+        logits, attns = self.generator.model(masked, lengths, unmasked)
 
         def greedy_sample(logits):
             batch_size, seq_len, _ = logits.size()
@@ -97,16 +95,17 @@ class MGANModel(nn.Module):
                 max_values, max_indices = dt.max(dim=1)
                 sampled.append(max_indices)
             sampled = torch.stack(sampled, dim=1)
-            return sampled[:, :-1]
+            return sampled
 
         samples = greedy_sample(logits)
-        loss = self.generator.criterion(logits, prev_output_tokens)
+        loss = self.generator.criterion(logits, unmasked)
         return (loss, samples, None, None)
 
     def _dstep(self, masked, lengths, mask, unmasked, real=True):
         logits, attn_scores = self.discriminator.model(masked, lengths, unmasked)
         mask = mask.unsqueeze(2)
-        truths = torch.ones_like(logits) if real  else torch.ones_like(logits) - mask
+        # print(logits.size(), mask.size())
+        truths = torch.ones_like(logits) if real else torch.ones_like(logits) - mask
 
         loss = self.discriminator.criterion(logits, truths, weight=mask)
         return (loss, None)

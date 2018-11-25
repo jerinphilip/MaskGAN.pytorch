@@ -1,13 +1,14 @@
 import torch
 from torch.nn.parallel import DataParallel
 from .distributed_model import MGANModel
+from mgan.utils.sequence_recovery import pretty_print
 import random
 
 
 class MGANTrainer:
-    def __init__(self, args, task, saver, logger):
+    def __init__(self, args, task, saver, logger, vocab):
         device = torch.device("cuda")
-        self.pretrain = False
+        self.pretrain = True
         self._model = MGANModel.build_model(args, task, pretrain=self.pretrain)
         self.model = DataParallel(self._model)
         self.model = self.model.to(device)
@@ -16,6 +17,7 @@ class MGANTrainer:
         self.saver = saver
         self.logger = logger
         self.step = 0
+        self.vocab = vocab
         self.saver.load("mgan", self.model.module)
 
     def run(self, epoch, samples):
@@ -50,7 +52,11 @@ class MGANTrainer:
             with torch.no_grad():
                 _gloss, generated, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
+            # print("d-gen-vs-unmasked", unmasked.size(),  generated.size())
             _d_fake_loss, _  = self.model(masked, lengths, mask, generated, tag="d-step", real=False)
+
+            pretty_print(self.vocab, masked, unmasked, generated)
+
             _d_real_loss = _d_real_loss.mean()
             _d_fake_loss = _d_fake_loss.mean()
 
@@ -95,11 +101,9 @@ class MGANTrainer:
 
         for rollout in range(num_rollouts):
             self.opt.zero_grad()
-            _gloss, samples, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
+            _gloss, generated, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
-            # print("samples", samples[0, :].tolist())
-            # print("masked ", src_tokens[0, :].tolist())
-            # print("actuals", prev_output_tokens[0, 1:].tolist())
+            pretty_print(self.vocab, masked, unmasked, generated)
 
             rgloss += _gloss.mean()
             gloss += _gloss.mean().item()
@@ -110,7 +114,6 @@ class MGANTrainer:
                 rcloss = _closs.mean()
                 closs += _closs.mean().item()
 
-        #rgloss = -1*rgloss
         rcloss.backward()
         rgloss.backward()
         self.opt.step()

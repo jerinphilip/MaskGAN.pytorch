@@ -34,7 +34,7 @@ def dataset_test(args):
     max_tokens_per_device = 500
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate_length = 20
+    truncate_length = 7
     batch_size = int(max_tokens/truncate_length)
 
     dataset = TensorIMDbDataset(args.path, spm_tokenize, crmask, truncate_length, rebuild=False)
@@ -52,13 +52,13 @@ def dataset_test(args):
 
     checkpoint_path = "/home/jerin/mgan-attempts/"
     saver = Saver(checkpoint_path)
-    trainer = MGANTrainer(args, task, saver, visdom)
+    trainer = MGANTrainer(args, task, saver, visdom, dataset.vocab)
     from mgan.utils.leaks import leak_check, LeakCheck
 
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         for samples in pbar:
-            with LeakCheck():
+            with LeakCheck(flag=False):
                 trainer.run(epoch, samples)
                 gc.collect()
 

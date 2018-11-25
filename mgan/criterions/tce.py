@@ -23,10 +23,10 @@ class TCELoss(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, logits, truths, weight=None):
-        logits = logits[:, :-1, :].contiguous()
+        logits = logits.contiguous()
         B, T, H = logits.size()
         logits = logits.view(T*B, H)
-        target = truths[:, 1:].contiguous().view(-1)
+        target = truths.contiguous().view(-1)
         loss = self.criterion(logits, target)
         return loss
 

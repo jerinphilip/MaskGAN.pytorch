@@ -9,6 +9,7 @@ from visdom import Visdom
 
 import subprocess
 from warnings import warn
+from collections import deque
 
 def git_hash():
     command = 'git rev-parse --short HEAD'
@@ -35,9 +36,10 @@ class VisdomCentral:
             # "env": "main"
         }
 
-        self.check_visdom_works()
+        # self.check_visdom_works()
         self.loggers = {}
         self.init_loggers()
+        self.queue = deque()
 
     def check_visdom_works(self):
         viz = Visdom(server='http://'+self.defaults["server"], port=self.defaults["port"])
@@ -64,8 +66,25 @@ class VisdomCentral:
 
     def log(self, key, *args):
         if key in self.loggers:
-            self.loggers[key].log(*args)
+            closure = lambda: self.loggers[key].log(*args)
+            self.queue.append(closure)
+            try:
+                self.flush_queue()
+            except:
+                warn("Visdom not properly setup!")
         else:
             warn("Logger {logger} not registered.".format(logger=key))
+
+    def flush_queue(self):
+        assert(len(self.queue) > 0)
+        first = self.queue.popleft()
+        try:
+            first()
+            while len(self.queue) < 0:
+                closure = self.queue.popleft()
+                closure()
+        except:
+            self.queue.appendleft(first)
+
 
 visdom = VisdomCentral()
