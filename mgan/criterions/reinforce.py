@@ -9,17 +9,15 @@ class REINFORCE(nn.Module):
         super().__init__()
         self.gamma = gamma
         self.clip_value = clip_value
+        self.log_sigmoid = torch.nn.LogSigmoid()
 
     def forward(self, log_probs, logits, weight, baselines=None):
         # TODO(jerin): How do I assert that this implementation is solid?
         # Is the generator giving the correct rewards?
         EPS = 1e-7
         batch_size, seqlen, _ = logits.size()
-        probs = torch.sigmoid(logits)
-        rewards = torch.log(probs + EPS)
-        rewards = rewards.squeeze(2)
-
-        # Rewards only for masked things.
+        rewards = self.log_sigmoid(logits).squeeze(2)
+        # print(rewards.size(), log_probs.size(), weight.size())
         rewards = weight * rewards
         log_probs = weight * log_probs  
 
@@ -39,6 +37,12 @@ class REINFORCE(nn.Module):
             baselines = baselines.squeeze(2)
         else:
             baselines = torch.zeros_like(cumulative_rewards)
+
+        # b = 0
+        # for t in range(seqlen):
+        #     if weight[b, t] == 1:
+        #         print("(", rewards[b, t].item(), cumulative_rewards[b, t].item(), log_probs[b, t].item(), ")", end=' ')
+        # print('')
 
         #advantages = weight*(cumulative_rewards - baselines)
         advantages = cumulative_rewards - baselines

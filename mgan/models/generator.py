@@ -30,17 +30,13 @@ class MGANGenerator(LSTMModel):
             # Good news, categorical works for a batch.
             # B x H dimension. Looks like logit's are already in that form.
             # TODO(jerin): Verify correctness.
-            EPS = 1e-7
-            logit = logit + EPS
             distribution = Categorical(logits=logit)
-            # Output is H dimension?
             sampled = distribution.sample()
             fsampled = torch.where(mask[:, t].byte(), sampled, unmasked[:, t])
             log_prob = distribution.log_prob(fsampled)
-            flog_prob = torch.where(mask[:, t].byte(), log_prob, torch.zeros_like(log_prob))
+            # flog_prob = torch.where(mask[:, t].byte(), log_prob, torch.zeros_like(log_prob))
             log_probs.append(log_prob)
             samples.append(fsampled)
-            
 
         samples = torch.stack(samples, dim=1)
         log_probs = torch.stack(log_probs, dim=1)

@@ -26,12 +26,12 @@ class Args:
     criterion = 'dummy'
 
 def dataset_test(args):
-    crmask = mask.ContiguousRandom(n_chars=2)
+    crmask = mask.ContiguousRandom(n_chars=4)
     rmask = mask.StochasticMask(probability=0.15)
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
 
     # Compute Batch Size
-    max_tokens_per_device = 250
+    max_tokens_per_device = 32000
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
     truncate_length = 40 

@@ -23,11 +23,12 @@ class MGANTrainer:
     def run(self, epoch, samples):
         # self._debug(samples)
         # return
-        num_rollouts = 20
+        num_rollouts = 50
         # num_rollouts = 1
         self.lr_scheduler.step(epoch)
         self.rollout_discriminator(num_rollouts=num_rollouts, samples=samples)
         self.rollout_generator(num_rollouts=num_rollouts, samples=samples)
+        self.debug(samples)
         # self.rollout_critic(num_rollouts=num_rollouts, samples=samples)
         self.saver.checkpoint("mgan", self.model.module)
         self.step += 1
@@ -56,17 +57,17 @@ class MGANTrainer:
             # print("d-gen-vs-unmasked", unmasked.size(),  generated.size())
             _d_fake_loss, _  = self.model(masked, lengths, mask, generated, tag="d-step", real=False)
 
-            pretty_print(self.vocab, masked, unmasked, generated)
 
             _d_real_loss = _d_real_loss.mean()
             _d_fake_loss = _d_fake_loss.mean()
 
-            loss += (_d_real_loss + _d_fake_loss )/2
+            loss = (_d_real_loss + _d_fake_loss )/2
+            loss.backward()
             
             d_real_loss += _d_real_loss.item()
             d_fake_loss += _d_fake_loss.item()
 
-        loss.backward()
+        # loss.backward()
         self.opt.step()
 
         self.logger.log("discriminator/real", self.step, d_real_loss/num_rollouts)
@@ -100,25 +101,33 @@ class MGANTrainer:
         rgloss = 0
         rcloss = 0
 
+        self.opt.zero_grad()
         for rollout in range(num_rollouts):
-            self.opt.zero_grad()
             _gloss, generated, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
             # pretty_print(self.vocab, masked, unmasked, generated)
 
-            rgloss += _gloss.mean()
+            rgloss = _gloss.mean()
             gloss += _gloss.mean().item()
 
             if not self.pretrain:
                 avg_reward += _avg_reward.mean().item()
                 rcloss = _closs.mean()
+                rcloss.backward()
                 closs += _closs.mean().item()
 
-        if not self.pretrain:
-            rcloss.backward()
-        rgloss.backward()
+            rgloss.backward()
+
         self.opt.step()
 
         self.logger.log("generator/advantage", self.step, -1*gloss/num_rollouts)
         self.logger.log("generator/reward/token", self.step, avg_reward)
         self.logger.log("critic/loss", self.step, closs/num_rollouts)
+
+    def debug(self, samples):
+        masked, unmasked, lengths, mask = samples
+        with torch.no_grad():
+            _d_real_loss, _ = self.model(masked, lengths, mask, unmasked, tag="d-step", real=True)
+            _gloss, generated, _closs, _ = self.model(masked, lengths, mask, unmasked, tag="g-step")
+            _d_fake_loss, _  = self.model(masked, lengths, mask, generated, tag="d-step", real=False)
+            pretty_print(self.vocab, masked, unmasked, generated, truncate=10)
