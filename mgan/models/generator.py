@@ -36,7 +36,9 @@ class MGANGenerator(LSTMModel):
             # Output is H dimension?
             sampled = distribution.sample()
             fsampled = torch.where(mask[:, t].byte(), sampled, unmasked[:, t])
-            log_probs.append(distribution.log_prob(fsampled))
+            log_prob = distribution.log_prob(fsampled)
+            flog_prob = torch.where(mask[:, t].byte(), log_prob, torch.zeros_like(log_prob))
+            log_probs.append(log_prob)
             samples.append(fsampled)
             
 

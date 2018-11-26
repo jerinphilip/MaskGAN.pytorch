@@ -8,7 +8,7 @@ import random
 class MGANTrainer:
     def __init__(self, args, task, saver, logger, vocab):
         device = torch.device("cuda")
-        self.pretrain = True
+        self.pretrain = False
         self._model = MGANModel.build_model(args, task, pretrain=self.pretrain)
         self.model = DataParallel(self._model)
         self.model = self.model.to(device)
@@ -23,7 +23,8 @@ class MGANTrainer:
     def run(self, epoch, samples):
         # self._debug(samples)
         # return
-        num_rollouts = 50
+        num_rollouts = 20
+        # num_rollouts = 1
         self.lr_scheduler.step(epoch)
         self.rollout_discriminator(num_rollouts=num_rollouts, samples=samples)
         self.rollout_generator(num_rollouts=num_rollouts, samples=samples)
@@ -103,18 +104,18 @@ class MGANTrainer:
             self.opt.zero_grad()
             _gloss, generated, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
 
-            pretty_print(self.vocab, masked, unmasked, generated)
+            # pretty_print(self.vocab, masked, unmasked, generated)
 
             rgloss += _gloss.mean()
             gloss += _gloss.mean().item()
 
-            avg_reward += _avg_reward.mean().item()
-
             if not self.pretrain:
+                avg_reward += _avg_reward.mean().item()
                 rcloss = _closs.mean()
                 closs += _closs.mean().item()
 
-        rcloss.backward()
+        if not self.pretrain:
+            rcloss.backward()
         rgloss.backward()
         self.opt.step()
 

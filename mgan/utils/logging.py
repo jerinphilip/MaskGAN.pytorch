@@ -18,6 +18,10 @@ def git_hash():
     _hash = output.strip().decode("ascii")
     return _hash
 
+def launch_time():
+    from time import gmtime, strftime
+    return strftime("%Y-%m-%d %H:%M:%S", gmtime())
+
 # Track a list of loggers, use meters.
 # Track a list of meters.
 
@@ -32,7 +36,7 @@ class VisdomCentral:
         self.defaults = {
             "server": "localhost",
             "port": 8097,
-            "env": git_hash()
+            "env": git_hash() + '-' + launch_time()
             # "env": "main"
         }
 
@@ -88,3 +92,4 @@ class VisdomCentral:
 
 
 visdom = VisdomCentral()
+

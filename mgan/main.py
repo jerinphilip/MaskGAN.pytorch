@@ -31,10 +31,10 @@ def dataset_test(args):
     spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
 
     # Compute Batch Size
-    max_tokens_per_device = 500
+    max_tokens_per_device = 250
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate_length = 7
+    truncate_length = 40 
     batch_size = int(max_tokens/truncate_length)
 
     dataset = TensorIMDbDataset(args.path, spm_tokenize, crmask, truncate_length, rebuild=False)

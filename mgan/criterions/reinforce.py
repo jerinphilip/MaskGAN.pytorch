@@ -11,13 +11,17 @@ class REINFORCE(nn.Module):
         self.clip_value = clip_value
 
     def forward(self, log_probs, logits, weight, baselines=None):
+        # TODO(jerin): How do I assert that this implementation is solid?
+        # Is the generator giving the correct rewards?
         EPS = 1e-7
         batch_size, seqlen, _ = logits.size()
         probs = torch.sigmoid(logits)
         rewards = torch.log(probs + EPS)
-
-
         rewards = rewards.squeeze(2)
+
+        # Rewards only for masked things.
+        rewards = weight * rewards
+        log_probs = weight * log_probs  
 
         cumulative_rewards = []
         for t in range(seqlen):
@@ -36,11 +40,12 @@ class REINFORCE(nn.Module):
         else:
             baselines = torch.zeros_like(cumulative_rewards)
 
-        advantages = weight*(cumulative_rewards - baselines)
+        #advantages = weight*(cumulative_rewards - baselines)
+        advantages = cumulative_rewards - baselines
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 
         # Multiply with logprobs
-        generator_objective = advantages * log_probs
+        generator_objective = weight * advantages * log_probs
         return (generator_objective, cumulative_rewards)
 
 
