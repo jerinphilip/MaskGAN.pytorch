@@ -12,10 +12,10 @@ class TBCELoss(nn.Module):
         weight = weight.float()
         # _debug(pred_logits, truths, weight)
         loss = self.criterion(pred_logits, truths)
-        # return loss.sum()
-        missing = weight.sum().item()
-        assert (missing != 0)
-        return ((loss * weight).sum()/missing)
+        return loss.sum()
+        # missing = weight.sum().item()
+        # assert (missing != 0)
+        # return ((loss * weight).sum()/missing)
 
 class TCELoss(nn.Module):
     def __init__(self):

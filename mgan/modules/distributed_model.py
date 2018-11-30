@@ -73,13 +73,13 @@ class MGANModel(nn.Module):
             logits, attn_scores = self.discriminator.model(masked, lengths, samples)
 
         baselines, _ = self.critic.model(masked, lengths, samples)
-        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
-        reward, cumulative_rewards = self.generator.criterion(log_probs, logits.detach(), mask, None)
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, None)
 
-        # Loss is inverse of reward.
+        # Loss is negative of reward.
+        # gloss = -1*reward
         gloss = -1*reward
-        critic_loss = self.critic.criterion(baselines.squeeze(2), 
-                cumulative_rewards.detach(), mask)
+        critic_loss = self.critic.criterion(baselines.squeeze(2), cumulative_rewards, mask)
 
         avg_reward_per_token = cumulative_rewards.sum()/mask.sum()
         return (gloss, samples, critic_loss, avg_reward_per_token)

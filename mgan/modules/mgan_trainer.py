@@ -2,7 +2,22 @@ import torch
 from torch.nn.parallel import DataParallel
 from .distributed_model import MGANModel
 from mgan.utils.sequence_recovery import pretty_print
+from torch.nn.utils.clip_grad import clip_grad_norm_
 import random
+
+
+class ClippedAdam(torch.optim.Adam):
+    def __init__(self, parameters, *args, **kwargs):
+        super().__init__(parameters, *args, **kwargs)
+        self.clip_value = 0
+        self._parameters = parameters
+
+    def set_clip(self, clip_value):
+        self.clip = clip_value
+
+    def step(self, *args, **kwargs):
+        clip_grad_norm_(self._parameters, self.clip_value)
+        super().step(*args, **kwargs)
 
 
 class MGANTrainer:
@@ -12,13 +27,16 @@ class MGANTrainer:
         self._model = MGANModel.build_model(args, task, pretrain=self.pretrain)
         self.model = DataParallel(self._model)
         self.model = self.model.to(device)
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        self.opt = ClippedAdam(self.model.parameters(), lr=1e-3)
+        self.opt.set_clip(clip_value=5.0)
         self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.opt, gamma=0.5)
         self.saver = saver
         self.logger = logger
         self.step = 0
         self.vocab = vocab
         self.saver.load("mgan", self.model.module)
+        self.critic_lag_max = 50
+        self.critic_lag = self.critic_lag_max 
 
     def run(self, epoch, samples):
         # self._debug(samples)
@@ -26,7 +44,7 @@ class MGANTrainer:
         num_rollouts = 50
         # num_rollouts = 1
         self.lr_scheduler.step(epoch)
-        self.rollout_discriminator(num_rollouts=num_rollouts, samples=samples)
+        # self.rollout_discriminator(num_rollouts=num_rollouts, samples=samples)
         self.rollout_generator(num_rollouts=num_rollouts, samples=samples)
         self.debug(samples)
         # self.rollout_critic(num_rollouts=num_rollouts, samples=samples)
@@ -104,15 +122,18 @@ class MGANTrainer:
         self.opt.zero_grad()
         for rollout in range(num_rollouts):
             _gloss, generated, _closs, _avg_reward = self.model(masked, lengths, mask, unmasked, tag="g-step")
-
-            # pretty_print(self.vocab, masked, unmasked, generated)
-
             rgloss = _gloss.mean()
             gloss += _gloss.mean().item()
 
             if not self.pretrain:
                 avg_reward += _avg_reward.mean().item()
                 rcloss = _closs.mean()
+                if self.critic_lag > 0:
+                    self.critic_lag = self.critic_lag - 1
+                    rcloss = rcloss*0 #zero out gradients
+                else:
+                    self.critic_lag = self.critic_lag_max
+
                 rcloss.backward()
                 closs += _closs.mean().item()
 

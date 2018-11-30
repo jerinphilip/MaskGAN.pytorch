@@ -17,9 +17,13 @@ class REINFORCE(nn.Module):
         EPS = 1e-7
         batch_size, seqlen, _ = logits.size()
         rewards = self.log_sigmoid(logits).squeeze(2)
+
         # print(rewards.size(), log_probs.size(), weight.size())
-        rewards = weight * rewards
-        log_probs = weight * log_probs  
+        # rewards = weight * rewards
+
+        # The below is dumb. This doesn't actually lead to bad loss signal, but
+        # pure fuckery.  
+        # log_probs = weight * log_probs  
 
         cumulative_rewards = []
         for t in range(seqlen):
@@ -35,8 +39,10 @@ class REINFORCE(nn.Module):
         # Find and clamp advantages
         if baselines is not None:
             baselines = baselines.squeeze(2)
+            advantages = cumulative_rewards - baselines
+            advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
         else:
-            baselines = torch.zeros_like(cumulative_rewards)
+            advantages = cumulative_rewards
 
         # b = 0
         # for t in range(seqlen):
@@ -45,11 +51,9 @@ class REINFORCE(nn.Module):
         # print('')
 
         #advantages = weight*(cumulative_rewards - baselines)
-        advantages = cumulative_rewards - baselines
-        advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 
         # Multiply with logprobs
-        generator_objective = weight * advantages * log_probs
+        generator_objective = (advantages * log_probs).sum(dim=0)
         return (generator_objective, cumulative_rewards)
 
 
