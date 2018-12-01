@@ -34,7 +34,7 @@ def dataset_test(args):
     max_tokens_per_device = 48000
     n_devices = torch.cuda.device_count()
     max_tokens = max_tokens_per_device * n_devices
-    truncate_length = 40 
+    truncate_length = 10
     batch_size = int(max_tokens/truncate_length)
 
     dataset = TensorIMDbDataset(args.path, spm_tokenize, crmask, truncate_length, rebuild=False)

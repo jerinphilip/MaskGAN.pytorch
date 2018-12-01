@@ -12,7 +12,7 @@ class SequenceGenerator:
         seqs = text.splitlines()
         return seqs
 
-def pretty_print(vocab, masked, unmasked, generated, truncate=None):
+def pretty_print(logger, vocab, masked, unmasked, generated, truncate=None):
     sequence_generator = SequenceGenerator(vocab)
     masked = sequence_generator(masked)
     unmasked = sequence_generator(unmasked)
@@ -28,7 +28,7 @@ def pretty_print(vocab, masked, unmasked, generated, truncate=None):
         if truncate <= 0:
             break
 
-    print('\n'.join(lines))
+    logger('\n'.join(lines))
 
 
 

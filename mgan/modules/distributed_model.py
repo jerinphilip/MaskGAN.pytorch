@@ -62,27 +62,31 @@ class MGANModel(nn.Module):
                 return self._gstep_pretrain(*args)
             else:
                 return self._gstep(*args)
+        elif kwargs['tag'] == 'c-step':
+            return self._cstep(*args)
+
         return self._dstep(*args, real=kwargs['real'])
 
-    def _gstep(self, masked, lengths, mask, unmasked):
-        samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
-
-        # Samples is the new unmasked.
-        # Find probability.
+    def _cstep(self, masked, lengths, mask, unmasked):
         with torch.no_grad():
+            samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
             logits, attn_scores = self.discriminator.model(masked, lengths, samples)
 
         baselines, _ = self.critic.model(masked, lengths, samples)
-        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
-        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, None)
+        with torch.no_grad():
+            reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines)
 
-        # Loss is negative of reward.
-        # gloss = -1*reward
-        gloss = -1*reward
         critic_loss = self.critic.criterion(baselines.squeeze(2), cumulative_rewards, mask)
+        return critic_loss
 
-        avg_reward_per_token = cumulative_rewards.sum()/mask.sum()
-        return (gloss, samples, critic_loss, avg_reward_per_token)
+    def _gstep(self, masked, lengths, mask, unmasked):
+        samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
+        with torch.no_grad():
+            logits, attn_scores = self.discriminator.model(masked, lengths, samples)
+            baselines, _ = self.critic.model(masked, lengths, samples)
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        loss = -1*reward
+        return (loss, samples)
 
     def _gstep_pretrain(self, masked, lengths, mask, unmasked):
         logits, attns = self.generator.model(masked, lengths, unmasked)
@@ -99,15 +103,13 @@ class MGANModel(nn.Module):
 
         samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, unmasked)
-        return (loss, samples, None, None)
+        return (loss, samples)
 
     def _dstep(self, masked, lengths, mask, unmasked, real=True):
         logits, attn_scores = self.discriminator.model(masked, lengths, unmasked)
         mask = mask.unsqueeze(2)
-        # print(logits.size(), mask.size())
         truths = torch.ones_like(logits) if real else torch.ones_like(logits) - mask
-
         loss = self.discriminator.criterion(logits, truths, weight=mask)
-        return (loss, None)
+        return loss
 
 
