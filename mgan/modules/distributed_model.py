@@ -84,7 +84,8 @@ class MGANModel(nn.Module):
         with torch.no_grad():
             logits, attn_scores = self.discriminator.model(masked, lengths, samples)
             baselines, _ = self.critic.model(masked, lengths, samples)
-        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, None)
         loss = -1*reward
         return (loss, samples)
 
@@ -111,5 +112,3 @@ class MGANModel(nn.Module):
         truths = torch.ones_like(logits) if real else torch.ones_like(logits) - mask
         loss = self.discriminator.criterion(logits, truths, weight=mask)
         return loss
-
-

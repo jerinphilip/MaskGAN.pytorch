@@ -20,6 +20,8 @@ def git_hash():
 
 def launch_time():
     from time import gmtime, strftime
+    from datetime import datetime
+
     return strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 # Track a list of loggers, use meters.

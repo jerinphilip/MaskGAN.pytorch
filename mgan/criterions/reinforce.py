@@ -28,7 +28,6 @@ class REINFORCE(nn.Module):
 
         cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
 
-        # Find and clamp advantages
         if baselines is not None:
             baselines = baselines.squeeze(2)
             advantages = cumulative_rewards - baselines

@@ -2,23 +2,9 @@ import torch
 from torch.nn.parallel import DataParallel
 from .distributed_model import MGANModel
 from mgan.utils.sequence_recovery import pretty_print
-from torch.nn.utils.clip_grad import clip_grad_norm_
+from mgan.optim import ClippedAdam
 import random
 from fairseq.meters import AverageMeter
-
-
-class ClippedAdam(torch.optim.Adam):
-    def __init__(self, parameters, *args, **kwargs):
-        super().__init__(parameters, *args, **kwargs)
-        self.clip_value = 0
-        self._parameters = parameters
-
-    def set_clip(self, clip_value):
-        self.clip = clip_value
-
-    def step(self, *args, **kwargs):
-        clip_grad_norm_(self._parameters, self.clip_value)
-        super().step(*args, **kwargs)
 
 
 class MGANTrainer:

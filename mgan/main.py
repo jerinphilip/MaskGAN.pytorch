@@ -55,6 +55,8 @@ def dataset_test(args):
     trainer = MGANTrainer(args, task, saver, visdom, dataset.vocab)
     from mgan.utils.leaks import leak_check, LeakCheck
 
+    loader = [next(iter(loader))]
+
     for epoch in tqdm(range(max_epochs), total=max_epochs, desc='epoch'):
         pbar = tqdm_progress_bar(loader, epoch=epoch)
         for samples in pbar:
