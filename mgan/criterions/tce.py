@@ -20,7 +20,7 @@ class TBCELoss(nn.Module):
 class TCELoss(nn.Module):
     def __init__(self):
         super().__init__()
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, logits, truths, weight=None):
         logits = logits.contiguous()

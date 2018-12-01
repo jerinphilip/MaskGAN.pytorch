@@ -27,11 +27,11 @@ class MGANTrainer:
 
 
     def run(self, epoch, samples):
-        num_rollouts = 50
+        num_rollouts = 1 if self.pretrain else 50
         self.lr_scheduler.step(epoch)
         self.rollout_discriminator(num_rollouts, samples)
         self.rollout_generator(num_rollouts, samples)
-        self.rollout_critic(num_rollouts, samples)
+        # self.rollout_critic(num_rollouts, samples)
         self.debug(samples)
         # self.rollout_critic(num_rollouts=num_rollouts, samples=samples)
         self.saver.checkpoint("mgan", self.model.module)

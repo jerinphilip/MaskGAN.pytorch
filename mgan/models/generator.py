@@ -19,17 +19,12 @@ class MGANGenerator(LSTMModel):
         self.encoder.lstm.flatten_parameters()
         logits, attns = super().forward(masked, lengths, unmasked)
         bsz, seqlen, vocab_size = logits.size()
-        # print("Logits size:", logits.size())
 
         # Sample from x converting it to probabilities
         samples = []
         log_probs = []
         for t in range(seqlen):
-            # input is B x T x C post transposing
             logit = logits[:, t, :]
-            # Good news, categorical works for a batch.
-            # B x H dimension. Looks like logit's are already in that form.
-            # TODO(jerin): Verify correctness.
             distribution = Categorical(logits=logit)
             sampled = distribution.sample()
             fsampled = torch.where(mask[:, t].byte(), sampled, unmasked[:, t])
@@ -41,6 +36,7 @@ class MGANGenerator(LSTMModel):
         samples = torch.stack(samples, dim=1)
         log_probs = torch.stack(log_probs, dim=1)
         return (samples, log_probs, attns)
+
 
 class MLEGenerator(LSTMModel):
     def forward(self, masked, lengths, unmasked):

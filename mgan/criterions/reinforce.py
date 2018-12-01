@@ -34,7 +34,8 @@ class REINFORCE(nn.Module):
         else:
             advantages = cumulative_rewards
 
-        # Normalize. Always.
+        # Normalize. Always.  At any stage, this helps prune out bad actions
+        # and encourage better ones among the fold.
         advantages = advantages - advantages.mean(dim=0)
         advantages = advantages.clamp(-1*self.clip_value, self.clip_value)
 
@@ -42,6 +43,6 @@ class REINFORCE(nn.Module):
 
         # Multiply with logprobs
         generator_objective = (advantages * log_probs).sum(dim=0)
-        return (generator_objective, cumulative_rewards)
+        return (generator_objective, cumulative_rewards.clone())
 
 
