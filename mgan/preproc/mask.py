@@ -55,7 +55,8 @@ class StochasticMask(Mask):
     def forward(self, n):
         # TODO(jerin), convert into proper bernoulli?
         idxs = []
-        for i in range(n):
+        # Starting from one, since masks are messed, 
+        for i in range(1, n):
             if self.r.random() < self.p:
                 idxs.append(i)
         return idxs
