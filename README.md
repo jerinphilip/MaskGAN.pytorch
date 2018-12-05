@@ -26,8 +26,10 @@ python3 -m pip install git+https://github.com/pytorch/fairseq
 
 #### IMDB Reviews Dataset
 ```
+mkdir datasets 
+cd datasets
 IMDB_DATASET='http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz'
-wget $IMDB_DATASET
+wget $IMDB_DATASET -O 
 tar xvzf aclImdb_v1.tar.gz
 ``` 
 
