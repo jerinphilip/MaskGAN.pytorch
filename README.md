@@ -1,6 +1,6 @@
 # MaskGAN.pytorch
 
-A PyTorch attempt at reproducing the results of 
+A PyTorch attempt at reimplementing 
 
 * MaskGAN: Better Text Generation via Filling in the _______ , William Fedus, Ian Goodfellow, Andrew M. Dai
   [[paper]](https://openreview.net/pdf?id=ByOExmWAb)
