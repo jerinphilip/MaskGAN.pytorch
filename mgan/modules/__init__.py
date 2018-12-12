@@ -1,3 +1,3 @@
-from .mgan_trainer import MGANTrainer
+from .trainer import MGANTrainer
 
 

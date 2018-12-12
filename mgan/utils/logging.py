@@ -24,9 +24,6 @@ def launch_time():
 
     return strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
-# Track a list of loggers, use meters.
-# Track a list of meters.
-
 class devnull:
     def __init__(self, *args, **kwargs): pass
     def log(self, *args, **kwargs): pass
@@ -93,5 +90,6 @@ class VisdomCentral:
             self.queue.appendleft(first)
 
 
-visdom = VisdomCentral()
+# visdom = VisdomCentral()
+visdom = devnull()
 

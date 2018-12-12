@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from collections import namedtuple
+from mgan.utils.perplexity import perplexity, greedy_sample
 
 from mgan.criterions import \
         TCELoss,            \
@@ -13,8 +14,6 @@ from mgan.models import     \
         MGANDiscriminator,  \
         MGANGenerator,      \
         MGANCritic
-
-
 
 class LossModel(nn.Module):
     def __init__(self, model, criterion):
@@ -81,30 +80,35 @@ class MGANModel(nn.Module):
 
     def _gstep(self, masked, lengths, mask, unmasked):
         samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
+        
+        # discriminattor
         with torch.no_grad():
             logits, attn_scores = self.discriminator.model(masked, lengths, samples)
             baselines, _ = self.critic.model(masked, lengths, samples)
-        # reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
+
+        reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, baselines.detach())
         reward, cumulative_rewards = self.generator.criterion(log_probs, logits, mask, None)
         loss = -1*reward
-        return (loss, samples)
+
+        # Compute perplexity
+        with torch.no_grad():
+            #logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
+            # log_probs = torch.nn.functional.log_softmax(logits, dim=2)
+            # ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+            tzero = torch.Tensor([0]).cuda()
+            ppl = {"ground-truth": tzero, "sampled": tzero}
+
+        return (loss, samples, ppl)
+    
 
     def _gstep_pretrain(self, masked, lengths, mask, unmasked):
         logits, attns = self.generator.model(masked, lengths, unmasked)
-
-        def greedy_sample(logits):
-            batch_size, seq_len, _ = logits.size()
-            sampled = []
-            for t in range(seq_len):
-                dt = logits[:, t, :]
-                max_values, max_indices = dt.max(dim=1)
-                sampled.append(max_indices)
-            sampled = torch.stack(sampled, dim=1)
-            return sampled
-
         samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, unmasked)
-        return (loss, samples)
+        with torch.no_grad():
+            log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
+            ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+        return (loss, samples, ppl)
 
     def _dstep(self, masked, lengths, mask, unmasked, real=True):
         logits, attn_scores = self.discriminator.model(masked, lengths, unmasked)

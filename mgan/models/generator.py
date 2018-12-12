@@ -37,9 +37,18 @@ class MGANGenerator(LSTMModel):
         log_probs = torch.stack(log_probs, dim=1)
         return (samples, log_probs, attns)
 
-
+    def logits(self, masked, lengths, unmasked, mask):
+        self.encoder.lstm.flatten_parameters()
+        logits, attns = super().forward(masked, lengths, unmasked)
+        return logits
+    
 class MLEGenerator(LSTMModel):
     def forward(self, masked, lengths, unmasked):
         self.encoder.lstm.flatten_parameters()
         return super().forward(masked, lengths, unmasked)
+
+    def logits(self, masked, lengths, unmasked, mask):
+        self.encoder.lstm.flatten_parameters()
+        logits, attns = super().forward(masked, lengths, unmasked)
+        return logits
 
