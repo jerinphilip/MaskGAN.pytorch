@@ -25,8 +25,12 @@ def launch_time():
     return strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 class devnull:
-    def __init__(self, *args, **kwargs): pass
-    def log(self, *args, **kwargs): pass
+    def __init__(self, *args, **kwargs): 
+        del args
+        del kwargs
+    def log(self, *args, **kwargs):
+        del args
+        del kwargs
 
 
 class VisdomCentral:
@@ -90,6 +94,6 @@ class VisdomCentral:
             self.queue.appendleft(first)
 
 
-# visdom = VisdomCentral()
-visdom = devnull()
+visdom = VisdomCentral()
+# visdom = devnull()
 
