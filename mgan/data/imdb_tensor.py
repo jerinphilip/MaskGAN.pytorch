@@ -23,7 +23,7 @@ class TensorIMDbDataset(Dataset):
         if self.vocab is None:
             raw_dataset = IMDbDataset(self.path)
             builder = VocabBuilder(raw_dataset, self.tokenizer, self.path)
-            self.vocab = builder.vocab
+            self.vocab = builder.vocab()
 
     def __len__(self):
         return len(self._dataset)

@@ -57,7 +57,7 @@ def main(args):
     def loader(dataset):
         _loader = DataLoader(dataset, batch_size=batch_size, 
                 collate_fn=dataset.get_collate_fn(), 
-                shuffle=True, num_workers=16)
+                shuffle=True, num_workers=8)
         return _loader
 
     #trainer.validate_dataset(loader(train_dataset))
@@ -78,13 +78,13 @@ def main(args):
 
 
     for epoch in tqdm(range(args.max_epochs), total=args.max_epochs, desc='epoch'):
-        pbar = tqdm_progress_bar(loader(datasets.train), epoch=epoch)
+        train_loader = loader(datasets.train)
+        pbar = tqdm_progress_bar(train_loader, epoch=epoch)
         # trainer.validate_dataset(loader(datasets.dev))
-
         for samples in pbar:
-            with LeakCheck(flag=False):
-                trainer.run(epoch, samples)
-                gc.collect()
+            pass
+            # trainer.run(epoch, samples)
+            # gc.collect()
 
 if __name__ == '__main__':
     parser = ArgumentParser()

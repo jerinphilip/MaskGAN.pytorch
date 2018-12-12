@@ -6,10 +6,11 @@ from fairseq.data.dictionary import Dictionary
 from tqdm import tqdm
 from copy import deepcopy
 from .imdb_dataset import IMDbDataset
+import bisect
 
 class IMDbEnhancedDataset(IMDbDataset):
     def __init__(self, path, tokenizer, truncate):
-        super().__init__(path)
+        self.dataset = IMDbDataset(path)
         self.tokenizer = tokenizer
         self._length = self.build_inverse_index(truncate)
         self.truncate = truncate
@@ -18,25 +19,28 @@ class IMDbEnhancedDataset(IMDbDataset):
         return self._length
 
     def build_inverse_index(self, n):
-        self.inverse_index = {}
-        idy = 0
-
+        N = len(self.dataset)
         pbar = tqdm(
-          range(self.length), total=self.length,
+          range(N), total=N,
           desc='building inv-idx', leave=False
         )
 
+        self.cumulative = [0]
+        previous = 0
         for idx in pbar:
-            sample = super().__getitem__(idx)
+            sample = self.dataset[idx]
             tokens = self.tokenizer(sample)
-            N = len(tokens)
-            for j in range(N-n):
-                self.inverse_index[idy] = (idx, j)
-                idy += 1
-        return (idy + 1)
+            count = max(0, len(tokens) - n)
+            previous = previous + count
+            self.cumulative.append(previous)
+        return previous
 
     def __getitem__(self, idx):
-        p_idx, j = self.inverse_index[idx]
-        contents = super().__getitem__(p_idx)
+        # Find the rightmost entry less than idx
+        p_idx = bisect.bisect_right(self.cumulative, idx)
+        j = idx - self.cumulative[p_idx-1]
+        contents = self.dataset[p_idx-1]
         tokens = self.tokenizer(contents)
-        return tokens[j:j+self.truncate]
+        segment = tokens[j:j+self.truncate]
+        item = deepcopy(segment)
+        return item
