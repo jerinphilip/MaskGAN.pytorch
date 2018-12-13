@@ -25,6 +25,6 @@ def debug_generate(model, loader, vocab, visdom):
            all_lines.extend(lines)
     model.train()
 
-    txt_dump = '\n'.join(all_lines[:100])
-    print('\n'.join(all_lines))
+    txt_dump = '<br>'.join(all_lines[:100])
+    #print('\n'.join(all_lines))
     closure(txt_dump)

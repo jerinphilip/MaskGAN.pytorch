@@ -28,7 +28,7 @@ def pretty_print(logger, vocab, masked, unmasked, generated, truncate=None):
         if truncate <= 0:
             break
 
-    logger('\n'.join(lines))
+    logger('<br>'.join(lines))
 
 
 

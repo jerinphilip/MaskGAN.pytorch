@@ -1,10 +1,11 @@
 import torch
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from torch.nn.parallel import DataParallel
 from .distributed_model import MGANModel
 from mgan.utils.sequence_recovery import pretty_print
 from mgan.optim import ClippedAdam
 import random
+from tqdm import tqdm
 from fairseq.meters import AverageMeter
 
 class MGANTrainer:
@@ -33,7 +34,6 @@ class MGANTrainer:
         self.rollout_discriminator(num_rollouts, samples)
         self.rollout_generator(num_rollouts, samples)
         self.rollout_critic(num_rollouts, samples)
-        self.debug(samples)
         self.saver.checkpoint("mgan", self.model.module)
         self.step += 1
 
@@ -43,8 +43,10 @@ class MGANTrainer:
         batch_size, seq_len = samples[0].size()
 
         self.opt.zero_grad()
+        pbar = tqdm(range(num_rollouts), 
+                desc='discriminator-rollout', total=num_rollouts)
 
-        for rollout in range(num_rollouts):
+        for rollout in pbar:
             real_loss = self.model(
                     masked, lengths, mask, unmasked, 
                     tag="d-step", real=True
@@ -82,7 +84,9 @@ class MGANTrainer:
         batch_size, seq_len = samples[0].size()
         meter = AverageMeter()
         self.opt.zero_grad()
-        for rollout in range(num_rollouts):
+        pbar = tqdm(range(num_rollouts), 
+                desc='critic-rollout', total=num_rollouts)
+        for rollout in pbar:
             loss = self.model(masked, lengths, mask, unmasked, tag="c-step")
             loss = loss.sum() / batch_size
             loss.backward()
@@ -96,23 +100,31 @@ class MGANTrainer:
         masked, unmasked, lengths, mask = samples
         batch_size, seq_len = samples[0].size()
         meter = AverageMeter()
+        ppl_meter = defaultdict(lambda: AverageMeter())
         self.opt.zero_grad()
-        for rollout in range(num_rollouts):
+        pbar = tqdm(range(num_rollouts), 
+                desc='generator-rollout', total=num_rollouts)
+
+        for rollout in pbar:
             loss, generated, ppl = self.model(masked, lengths, mask, unmasked, tag="g-step")
             loss = loss.sum() / batch_size
             loss.backward()
             meter.update(-1*loss.item())
+            for key in ppl:
+                ppl[key] = ppl[key].sum() / batch_size
+                ppl_meter[key].update(ppl[key].item())
         self.opt.step()
         self.logger.log("generator/advantage", self.step, meter.avg)
+        for key in ppl_meter:
+            self.logger.log("ppl/{}".format(key), ppl_meter[key].avg)
 
-    def debug(self, samples):
+        self.debug('train', samples, generated)
+
+    def debug(self, key, samples, generated):
         masked, unmasked, lengths, mask = samples
-        logger = lambda s: self.logger.log('generated', s)
-        with torch.no_grad():
-            d_real_loss = self.model(masked, lengths, mask, unmasked, tag="d-step", real=True)
-            gloss, generated = self.model(masked, lengths, mask, unmasked, tag="g-step")
-            d_fake_loss  = self.model(masked, lengths, mask, generated, tag="d-step", real=False)
-            pretty_print(print, self.vocab, masked, unmasked, generated, truncate=10)
+        tag = 'generated/{}'.format(key)
+        logger = lambda s: self.logger.log(tag, s)
+        pretty_print(logger, self.vocab, masked, unmasked, generated, truncate=10)
 
     def validate_dataset(self, loader):
         self.model.eval()
@@ -178,3 +190,4 @@ class MGANTrainer:
 
             meters.ppl_sampled.update(ppl['sampled'].item())
             meters.ppl_truths.update(ppl['ground-truth'].item())
+            self.debug('dev', samples, generated)

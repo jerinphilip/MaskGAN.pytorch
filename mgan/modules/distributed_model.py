@@ -91,12 +91,9 @@ class MGANModel(nn.Module):
 
         # Compute perplexity
         with torch.no_grad():
-            # logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
-            # log_probs = torch.nn.functional.log_softmax(logits, dim=2)
-            # ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
-            # tzero = torch.Tensor([0]).cuda()
-            # ppl = {"ground-truth": tzero, "sampled": tzero}
-            ppl = None
+            logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
+            log_probs = torch.nn.functional.log_softmax(logits, dim=2)
+            ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
 
         return (loss, samples, ppl)
     
@@ -106,9 +103,8 @@ class MGANModel(nn.Module):
         samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, unmasked)
         with torch.no_grad():
-            # log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
-            # ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
-            ppl = None
+            log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
+            ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
         return (loss, samples, ppl)
 
     def _dstep(self, masked, lengths, mask, unmasked, real=True):

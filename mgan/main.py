@@ -81,10 +81,10 @@ def main(args):
         train_loader = loader(datasets.train)
         pbar = tqdm_progress_bar(train_loader, epoch=epoch)
         # trainer.validate_dataset(loader(datasets.dev))
-        for samples in pbar:
-            pass
-            # trainer.run(epoch, samples)
-            # gc.collect()
+        for i, samples in enumerate(pbar):
+            trainer.run(epoch, samples)
+            if i % args.validate_every == 0:
+                self.validate_dataset(loader(datasets.dev))
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -92,6 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('--spm_path', required=True)
     parser.add_argument('--criterion', default='dummy')
     parser.add_argument('--max_epochs', type=int,  default=10)
+    parser.add_argument('--validate_every', type=int,  default=5)
     args = parser.parse_args()
     main(args)
 
