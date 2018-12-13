@@ -22,7 +22,7 @@ class IMDbEnhancedDataset(IMDbDataset):
         N = len(self.dataset)
         pbar = tqdm(
           range(N), total=N,
-          desc='building inv-idx', leave=False
+          desc='building inv-idx', leave=True
         )
 
         self.cumulative = [0]

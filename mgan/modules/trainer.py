@@ -8,6 +8,13 @@ import random
 from tqdm import tqdm
 from fairseq.meters import AverageMeter
 
+def _tqdm(length, desc):
+    pbar = tqdm(
+        range(length), total=length,
+        leave=True, desc=desc
+    )
+    return pbar
+
 class MGANTrainer:
     def __init__(self, args, task, saver, logger, vocab):
         device = torch.device("cuda")
@@ -26,10 +33,13 @@ class MGANTrainer:
         self.critic_lag_max = 50
         self.critic_lag = self.critic_lag_max 
 
+        self.args = args
+        self.task = task
+
 
     def run(self, epoch, samples):
         self.model.train()
-        num_rollouts = 1 if self.pretrain else 50
+        num_rollouts = 1 if self.pretrain else self.args.num_rollouts
         self.lr_scheduler.step(epoch)
         self.rollout_discriminator(num_rollouts, samples)
         self.rollout_generator(num_rollouts, samples)
@@ -43,8 +53,7 @@ class MGANTrainer:
         batch_size, seq_len = samples[0].size()
 
         self.opt.zero_grad()
-        pbar = tqdm(range(num_rollouts), 
-                desc='discriminator-rollout', total=num_rollouts)
+        pbar = _tqdm(num_rollouts, 'discriminator-rollout')
 
         for rollout in pbar:
             real_loss = self.model(
@@ -84,8 +93,7 @@ class MGANTrainer:
         batch_size, seq_len = samples[0].size()
         meter = AverageMeter()
         self.opt.zero_grad()
-        pbar = tqdm(range(num_rollouts), 
-                desc='critic-rollout', total=num_rollouts)
+        pbar = _tqdm(num_rollouts, 'critic-rollout')
         for rollout in pbar:
             loss = self.model(masked, lengths, mask, unmasked, tag="c-step")
             loss = loss.sum() / batch_size
@@ -102,21 +110,20 @@ class MGANTrainer:
         meter = AverageMeter()
         ppl_meter = defaultdict(lambda: AverageMeter())
         self.opt.zero_grad()
-        pbar = tqdm(range(num_rollouts), 
-                desc='generator-rollout', total=num_rollouts)
+        pbar = _tqdm(num_rollouts, 'generator-rollout')
 
         for rollout in pbar:
             loss, generated, ppl = self.model(masked, lengths, mask, unmasked, tag="g-step")
             loss = loss.sum() / batch_size
             loss.backward()
             meter.update(-1*loss.item())
-            for key in ppl:
-                ppl[key] = ppl[key].sum() / batch_size
-                ppl_meter[key].update(ppl[key].item())
+            # for key in ppl:
+            #     ppl[key] = ppl[key].sum() / batch_size
+            #     ppl_meter[key].update(ppl[key].item())
         self.opt.step()
         self.logger.log("generator/advantage", self.step, meter.avg)
-        for key in ppl_meter:
-            self.logger.log("ppl/{}".format(key), ppl_meter[key].avg)
+        # for key in ppl_meter:
+        #     self.logger.log("ppl/{}".format(key), ppl_meter[key].avg)
 
         self.debug('train', samples, generated)
 
@@ -136,7 +143,8 @@ class MGANTrainer:
         for sample_batch in loader:
             self._validate(meters, sample_batch)
             for key, value in meters._asdict().items():
-                print(key, value.avg)
+                pass
+                # print(key, value.avg)
 
     @property
     def umodel(self):
@@ -163,7 +171,8 @@ class MGANTrainer:
 
             generator_loss, generated, ppl = self.model(
                     masked, lengths, mask, 
-                    unmasked, tag="g-step"
+                    unmasked, tag="g-step",
+                    ppl=True
             )
 
             generator_loss = agg(generator_loss)
@@ -184,6 +193,8 @@ class MGANTrainer:
             meters.dfake.update(fake_loss.item())
             meters.generator.update(generator_loss.item())
             meters.critic.update(critic_loss.item())
+
+            self.debug('dev', samples, generated)
 
             for key in ppl:
                 ppl[key] = agg(ppl[key])

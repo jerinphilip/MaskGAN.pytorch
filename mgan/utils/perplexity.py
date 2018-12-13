@@ -4,15 +4,19 @@ import math
 
 def greedy_sample(logits):
     batch_size, seq_len, _ = logits.size()
-    sampled = []
-    for t in range(seq_len):
-        dt = logits[:, t, :]
-        max_values, max_indices = dt.max(dim=1)
-        sampled.append(max_indices)
-    return torch.stack(sampled, dim=1)
+    max_values, max_indices = logits.max(dim=2)
+    return max_indices
+    # sampled = []
+    # for t in range(seq_len):
+    #     dt = logits[:, t, :]
+    #     max_values, max_indices = dt.max(dim=1)
+    #     sampled.append(max_indices)
+    # return torch.stack(sampled, dim=1)
 
 def ppl(sequences, log_probs):
     batch_size, seq_len = sequences.size()
+    # sequences = sequences.view(-1).long()
+    # seq_log_probs = log_probs[:, :, sequences]
     seq_log_probs = torch.zeros_like(sequences).float()
     for b in range(batch_size):
         for t in range(seq_len):

@@ -74,7 +74,7 @@ class VisdomCentral:
         self.loggers = dict([(k, plogger(k)) for k in keys])
         for key in ['train', 'dev']:
             tag = 'generated/{}'.format(key)
-            self.loggers[tag] = VisdomTextLogger(update_type='REPLACE', **self.defaults)
+            self.loggers[tag] = VisdomTextLogger(update_type='REPLACE', opts={'title': key}, **self.defaults)
 
     def log(self, key, *args):
         if key in self.loggers:

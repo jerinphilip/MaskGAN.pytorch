@@ -56,11 +56,14 @@ class MGANModel(nn.Module):
         return cls(gloss, dloss, closs, pretrain=pretrain)
 
     def forward(self, *args, **kwargs):
+        if 'ppl' not in kwargs:
+            kwargs['ppl'] = False
+
         if kwargs['tag'] == 'g-step':
             if self.pretrain:
-                return self._gstep_pretrain(*args)
+                return self._gstep_pretrain(*args, ppl_compute=kwargs['ppl'])
             else:
-                return self._gstep(*args)
+                return self._gstep(*args, ppl_compute=kwargs['ppl'])
         elif kwargs['tag'] == 'c-step':
             return self._cstep(*args)
 
@@ -78,7 +81,7 @@ class MGANModel(nn.Module):
         critic_loss = self.critic.criterion(baselines.squeeze(2), cumulative_rewards, mask)
         return critic_loss
 
-    def _gstep(self, masked, lengths, mask, unmasked):
+    def _gstep(self, masked, lengths, mask, unmasked, ppl_compute=False):
         samples, log_probs, attns = self.generator.model(masked, lengths, unmasked, mask)
         
         # discriminattor
@@ -90,21 +93,27 @@ class MGANModel(nn.Module):
         loss = -1*reward
 
         # Compute perplexity
-        with torch.no_grad():
-            logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
-            log_probs = torch.nn.functional.log_softmax(logits, dim=2)
-            ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+        if ppl_compute:
+            with torch.no_grad():
+                logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
+                log_probs = torch.nn.functional.log_softmax(logits, dim=2)
+                ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+        else:
+            ppl = None
 
         return (loss, samples, ppl)
     
 
-    def _gstep_pretrain(self, masked, lengths, mask, unmasked):
+    def _gstep_pretrain(self, masked, lengths, mask, unmasked, ppl_compute=False):
         logits, attns = self.generator.model(masked, lengths, unmasked)
         samples = greedy_sample(logits)
         loss = self.generator.criterion(logits, unmasked)
-        with torch.no_grad():
-            log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
-            ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+        if ppl_compute:
+            with torch.no_grad():
+                log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
+                ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+        else:
+            ppl = None
         return (loss, samples, ppl)
 
     def _dstep(self, masked, lengths, mask, unmasked, real=True):

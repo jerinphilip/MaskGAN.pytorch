@@ -9,6 +9,7 @@ import os
 import torch
 from torch import optim
 from torch.utils.data import DataLoader
+import random
 
 
 # FairSeq imports
@@ -56,7 +57,7 @@ def main(args):
     trainer = MGANTrainer(args, task, saver, visdom, vocab)
     def loader(dataset):
         _loader = DataLoader(dataset, batch_size=batch_size, 
-                collate_fn=dataset.get_collate_fn(), 
+                collate_fn=TensorIMDbDataset.collate, 
                 shuffle=True, num_workers=8)
         return _loader
 
@@ -79,12 +80,14 @@ def main(args):
 
     for epoch in tqdm(range(args.max_epochs), total=args.max_epochs, desc='epoch'):
         train_loader = loader(datasets.train)
-        pbar = tqdm_progress_bar(train_loader, epoch=epoch)
-        # trainer.validate_dataset(loader(datasets.dev))
+        pbar = tqdm(train_loader, desc='training', leave=True)
         for i, samples in enumerate(pbar):
             trainer.run(epoch, samples)
             if i % args.validate_every == 0:
-                self.validate_dataset(loader(datasets.dev))
+                validation_samples = 1000
+                val_idxs = random.sample(range(len(datasets.dev)), validation_samples)
+                subset = torch.utils.data.Subset(datasets.dev, val_idxs)
+                trainer.validate_dataset(loader(subset))
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -93,6 +96,7 @@ if __name__ == '__main__':
     parser.add_argument('--criterion', default='dummy')
     parser.add_argument('--max_epochs', type=int,  default=10)
     parser.add_argument('--validate_every', type=int,  default=5)
+    parser.add_argument('--num_rollouts', type=int,  default=5)
     args = parser.parse_args()
     main(args)
 
