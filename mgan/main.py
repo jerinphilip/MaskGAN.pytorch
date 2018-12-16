@@ -22,12 +22,12 @@ from mgan.modules import MGANTrainer
 from mgan.utils import Saver
 from mgan.utils.debug_generate import debug_generate
 from mgan.utils.logging import visdom
-
+from mgan.utils.leaks import leak_check, LeakCheck
 
 def main(args):
     crmask = mask.ContiguousRandom(n_chars=4)
     rmask = mask.StochasticMask(probability=0.5)
-    spm_tokenize = tokenize.SentencePieceTokenizer(model_path=args.spm_path)
+    spm_tokenize = tokenize.SentencePieceTokenizer(args.spm_prefix)
 
     # Compute Batch Size
     max_tokens_per_device = 48000
@@ -75,7 +75,6 @@ def main(args):
             dev=dev_dataset
     )
 
-    from mgan.utils.leaks import leak_check, LeakCheck
 
 
     for epoch in tqdm(range(args.max_epochs), total=args.max_epochs, desc='epoch'):
@@ -92,7 +91,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--path', required=True)
-    parser.add_argument('--spm_path', required=True)
+    parser.add_argument('--spm_prefix', required=True)
     parser.add_argument('--criterion', default='dummy')
     parser.add_argument('--max_epochs', type=int,  default=10)
     parser.add_argument('--validate_every', type=int,  default=5)

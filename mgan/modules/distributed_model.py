@@ -97,7 +97,7 @@ class MGANModel(nn.Module):
             with torch.no_grad():
                 logits = self.generator.model.logits(masked, lengths, unmasked, mask).clone()
                 log_probs = torch.nn.functional.log_softmax(logits, dim=2)
-                ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+                ppl = perplexity(unmasked, samples, log_probs)
         else:
             ppl = None
 
@@ -111,7 +111,7 @@ class MGANModel(nn.Module):
         if ppl_compute:
             with torch.no_grad():
                 log_probs = torch.nn.functional.log_softmax(logits, dim=2).clone()
-                ppl = perplexity(masked, lengths, mask, unmasked, log_probs)
+                ppl = perplexity(unmasked, samples, log_probs)
         else:
             ppl = None
         return (loss, samples, ppl)
