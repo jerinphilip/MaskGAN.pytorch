@@ -31,7 +31,7 @@ python3 -m pip install git+https://github.com/pytorch/fairseq
 mkdir datasets 
 cd datasets
 IMDB_DATASET='http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz'
-wget $IMDB_DATASET -O 
+wget $IMDB_DATASET -O aclImdb_v1.tar.gz
 tar xvzf aclImdb_v1.tar.gz
 ``` 
 
